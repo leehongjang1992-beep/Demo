@@ -18,10 +18,12 @@ let gameState = {
     calledNumbers: [],
     timerActive: false,
     timeLeft: 0,
-    gameStatus: "WAITING" // WAITING, REGISTRATION, STARTED
+    gameStatus: "WAITING", // WAITING, REGISTRATION, STARTED
+    playMode: "manual" // manual ya auto
 };
 
 let timerInterval = null;
+let autoPlayInterval = null;
 
 app.use(express.static(__dirname));
 
@@ -33,14 +35,35 @@ function updateAdminDashboard() {
         latestBall: gameState.latestBall,
         calledNumbers: gameState.calledNumbers,
         gameStatus: gameState.gameStatus,
-        timeLeft: gameState.timeLeft
+        timeLeft: gameState.timeLeft,
+        playMode: gameState.playMode
     });
+}
+
+// Helper for Auto Play Drawing
+function drawAutomaticNumber() {
+    let remaining = [];
+    for (let i = 1; i <= 90; i++) {
+        if (!gameState.calledNumbers.includes(i)) remaining.push(i);
+    }
+    if (remaining.length === 0) {
+        if (autoPlayInterval) clearInterval(autoPlayInterval);
+        return;
+    }
+    let randomIndex = Math.floor(Math.random() * remaining.length);
+    let drawnNum = remaining[randomIndex];
+    
+    gameState.calledNumbers.unshift(drawnNum);
+    gameState.latestBall = drawnNum;
+    
+    io.emit('gameUpdate', gameState);
+    updateAdminDashboard();
 }
 
 io.on('connection', (socket) => {
     
     socket.on('joinGame', (username) => {
-        onlineUsers[socket.id] = { username, tokens: 500, role: 'user' };
+        onlineUsers[socket.id] = { username, role: 'user' };
         socket.emit('initUser', onlineUsers[socket.id]);
         socket.emit('chatHistory', chatHistory);
         socket.emit('gameUpdate', gameState);
@@ -54,13 +77,13 @@ io.on('connection', (socket) => {
             updateAdminDashboard();
             socket.emit('chatHistory', chatHistory);
         } else {
-            socket.emit('adminAuthFailure', 'Invalid Admin Pin Code!');
+            socket.emit('adminAuthFailure', 'Invalid Admin Pin!');
         }
     });
 
-    // ⏳ Admin manually triggers 1-minute registration window
     socket.on('startRegistrationWindow', () => {
         if (timerInterval) clearInterval(timerInterval);
+        if (autoPlayInterval) clearInterval(autoPlayInterval);
         
         gameState.gameStatus = "REGISTRATION";
         gameState.timerActive = true;
@@ -85,28 +108,51 @@ io.on('connection', (socket) => {
         }, 1000);
     });
 
-    // ⚡ Real-Time Admin Click Confirm Handler
+    // Handle Manual or Auto mode switch from admin
+    socket.on('switchPlayMode', (mode) => {
+        gameState.playMode = mode;
+        if (autoPlayInterval) clearInterval(autoPlayInterval);
+        
+        if (mode === "auto" && gameState.gameStatus === "STARTED") {
+            autoPlayInterval = setInterval(drawAutomaticNumber, 7000); // Har 7 second me automatic number draw
+        }
+        updateAdminDashboard();
+    });
+
     socket.on('newNumber', (num) => {
         const parsedNum = parseInt(num);
         if (!gameState.calledNumbers.includes(parsedNum)) {
-            // Naya number array me SABSE PEHLE (index 0 par) unshift hoga taaki yeh hamesha upar/pehle dikhe
             gameState.calledNumbers.unshift(parsedNum);
         }
         gameState.latestBall = parsedNum;
-        gameState.gameStatus = "STARTED"; // Game automatically starts playing
+        gameState.gameStatus = "STARTED";
         
         io.emit('gameUpdate', gameState);
         updateAdminDashboard();
     });
 
+    // 🏆 Global Win Declaration Handler
+    socket.on('claimWinEvent', (data) => {
+        // BroadCast SMS type window alert box to everyone
+        io.emit('victoryNotificationPopup', {
+            winner: data.winner,
+            claimType: data.claimType
+        });
+    });
+
+    // 🔄 Game Reset Engine + Chat Wiper
     socket.on('resetGame', () => {
         if (timerInterval) clearInterval(timerInterval);
-        gameState = { latestBall: "-", calledNumbers: [], timerActive: false, timeLeft: 0, gameStatus: "WAITING" };
+        if (autoPlayInterval) clearInterval(autoPlayInterval);
+        
+        gameState = { latestBall: "-", calledNumbers: [], timerActive: false, timeLeft: 0, gameStatus: "WAITING", playMode: "manual" };
+        chatHistory = []; // Purana sara chat clear ho jayega
+        
         io.emit('gameUpdate', gameState);
+        io.emit('chatHistory', chatHistory); // Users ki screen par bhi clear clear broadcast
         updateAdminDashboard();
     });
 
-    // Chat Pipeline Fix: Storing mapping inside onlineUsers correctly
     socket.on('sendMessage', (msgText) => {
         const user = onlineUsers[socket.id];
         if (!user) return;
@@ -126,4 +172,4 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(PORT, () => console.log(`🚀 Automated Engine Spinning Active on Port ${PORT}`));
+server.listen(PORT, () => console.log(`🚀 Tambola Dynamic Engine Running on Port ${PORT}`));
