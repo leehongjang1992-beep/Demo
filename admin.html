@@ -3,9 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tambola Live Club - Admin Control Deck</title>
+    <title>Tambola Master Control Board</title>
     <link rel="stylesheet" href="style.css">
     <script src="/socket.io/socket.io.js"></script>
+    <style>
+        .admin-box { max-width: 900px; margin: 2rem auto; padding: 1.5rem; }
+        .board-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 8px; margin: 1.5rem 0; }
+        .board-cell { 
+            background: var(--bg-input); border: 1px solid var(--border-color); 
+            aspect-ratio: 1; display: flex; align-items: center; justify-content: center; 
+            font-size: 1.2rem; font-weight: 800; border-radius: 8px; cursor: pointer; transition: all 0.2s;
+        }
+        .board-cell:hover { border-color: var(--primary); transform: scale(1.05); }
+        .board-cell.called { background: var(--accent-success); color: #000; box-shadow: 0 0 12px var(--accent-success); }
+        .display-panel { display: flex; justify-content: space-between; align-items: center; background: var(--bg-input); padding: 1rem; border-radius: 12px; margin-bottom: 1rem; }
+        .big-ball { font-size: 3.5rem; font-weight: 900; color: #ffb020; }
+    </style>
 </head>
 <body>
 
@@ -22,62 +35,149 @@
         </div>
     </div>
 
-    <div class="app-container" id="adminMainLayout">
+    <div class="app-container" id="adminMainLayout" style="display:none; max-width: 1000px;">
         <header>
             <div>
-                <h1 style="font-size: 1.5rem; color: var(--accent-danger); font-weight: 800;">🛠️ CLUB MASTER CONTROL DECK</h1>
-                <p style="font-size: 0.8rem; color: var(--text-muted);">Real-time Ledger & Chat Orchestration Environment</p>
+                <h1 style="font-size: 1.5rem; color: var(--accent-danger); font-weight: 800;">🎙️ TAMBOLA GAME MASTER PANEL</h1>
+                <p style="font-size: 0.8rem; color: var(--text-muted);">Click any number on the board below to broadcast live to all players</p>
             </div>
-            <div class="badge" style="border-color: var(--accent-danger);">🛡️ Secure Terminal Active</div>
+            <button class="btn btn-danger" style="width: auto; padding: 6px 15px;" onclick="triggerReset()">🔄 Reset Game</button>
         </header>
 
-        <div class="metrics-row" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 2rem;">
-            <div class="metric-box">
-                <div class="metric-label">Online Players</div>
-                <div class="metric-val" id="metricOnlineCount">0</div>
-            </div>
-            <div class="metric-box">
-                <div class="metric-label">Pending Verifications</div>
-                <div class="metric-val" id="metricPendingCount" style="color: var(--primary);">0</div>
-            </div>
-        </div>
+        <div class="grid-layout" style="grid-template-columns: 1.5fr 1fr;">
+            <div>
+                <div class="display-panel">
+                    <div>
+                        <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Current Number</span>
+                        <div class="big-ball" id="currentBallDisplay">-</div>
+                    </div>
+                    <button class="btn btn-primary" style="width: auto;" onclick="startRegistrationTimer()">⏳ Start 60s Timer</button>
+                </div>
 
-        <div class="grid-layout admin-grid" style="grid-template-columns: 1fr;">
-            
-            <div class="card">
-                <h3>💸 Incoming Ledger Verification Requests</h3>
-                <div class="table-responsive">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Handle</th>
-                                <th>Value</th>
-                                <th>UTR/Trans ID</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="depositRequestsTableBody">
-                            <tr>
-                                <td colspan="5" style="text-align: center; color: var(--text-muted);">No transactions submitted yet.</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div class="card">
+                    <h3>🔢 1-90 Main Board (Click to Draw)</h3>
+                    <div class="board-grid" id="mainAdminBoard"></div>
                 </div>
             </div>
 
-            <div class="card chat-container">
-                <h3>💬 Live Lounge Chat Audit Logs</h3>
-                <div class="chat-logs" id="adminChatLogsArea"></div>
-                <div class="chat-input-wrapper">
-                    <input type="text" id="adminChatMessageField" placeholder="Broadcast system announcement message..." maxlength="120">
-                    <button class="btn btn-danger" onclick="submitAdminChatMessage()">Broadcast</button>
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <div class="card">
+                    <h3>💸 Deposit Approvals (<span id="metricPendingCount">0</span>)</h3>
+                    <div class="table-responsive" style="max-height: 180px; overflow-y: auto;">
+                        <table>
+                            <tbody id="depositRequestsTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card chat-container" style="height: 250px;">
+                    <div class="chat-logs" id="adminChatLogsArea" style="height: 180px;"></div>
+                    <div class="chat-input-wrapper">
+                        <input type="text" id="adminChatMessageField" placeholder="Announcement...">
+                        <button class="btn btn-danger" onclick="submitAdminChatMessage()">Send</button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="admin.js"></script>
+    <script>
+        const socket = io();
+        
+        function executeAdminAuth() {
+            const password = document.getElementById('adminPassInput').value;
+            socket.emit('adminLogin', password);
+        }
+
+        socket.on('adminAuthSuccess', () => {
+            document.getElementById('adminAuthGate').style.display = 'none';
+            document.getElementById('adminMainLayout').style.display = 'block';
+            buildAdminBoard();
+        });
+
+        socket.on('adminAuthFailure', (msg) => {
+            const err = document.getElementById('authErrMsg');
+            err.textContent = msg; err.style.display = 'block';
+        });
+
+        function buildAdminBoard() {
+            const grid = document.getElementById('mainAdminBoard');
+            grid.innerHTML = '';
+            for(let i = 1; i <= 90; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'board-cell';
+                cell.id = `admin-num-${i}`;
+                cell.textContent = i;
+                cell.onclick = () => sendNumber(i);
+                grid.appendChild(cell);
+            }
+        }
+
+        function sendNumber(num) {
+            socket.emit('newNumber', num);
+        }
+
+        function startRegistrationTimer() {
+            socket.emit('startTimerEvent');
+        }
+
+        function triggerReset() {
+            if(confirm("Pura game reset karein? Saare numbers clear ho jayenge.")) {
+                socket.emit('resetGame');
+            }
+        }
+
+        socket.on('adminDashboardUpdate', (data) => {
+            document.getElementById('metricPendingCount').textContent = data.pendingRequests.length;
+            document.getElementById('currentBallDisplay').textContent = data.latestBall;
+            
+            // Sync Board Grid Status
+            for(let i = 1; i <= 90; i++) {
+                const cell = document.getElementById(`admin-num-${i}`);
+                if(cell) {
+                    if(data.calledNumbers.includes(i)) cell.classList.add('called');
+                    else cell.classList.remove('called');
+                }
+            }
+            renderRequestsTable(data.allRequests);
+        });
+
+        function renderRequestsTable(requests) {
+            const tbody = document.getElementById('depositRequestsTableBody');
+            tbody.innerHTML = requests.length === 0 ? '<tr><td>No pending requests</td></tr>' : '';
+            requests.reverse().forEach(req => {
+                if(req.status !== 'pending') return;
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${req.username}</strong> (₹${req.amount})< br><small>UTR: ${req.utr}</small></td>
+                        <td style="text-align:right;">
+                            <button class="btn btn-success" style="padding:4px 8px; width:auto; font-size:0.8rem;" onclick="socket.emit('processRequest', {requestId:'${req.id}', action:'approved'})">✔</button>
+                            <button class="btn btn-danger" style="padding:4px 8px; width:auto; font-size:0.8rem;" onclick="socket.emit('processRequest', {requestId:'${req.id}', action:'rejected'})">❌</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function submitAdminChatMessage() {
+            const field = document.getElementById('adminChatMessageField');
+            if(!field.value.trim()) return;
+            socket.emit('sendMessage', field.value.trim());
+            field.value = '';
+        }
+
+        socket.on('chatHistory', (history) => {
+            const area = document.getElementById('adminChatLogsArea'); area.innerHTML = '';
+            history.forEach(msg => {
+                area.innerHTML += `<div class="chat-msg"><span class="author">${msg.sender}:</span> ${msg.text}</div>`;
+            });
+            area.scrollTop = area.scrollHeight;
+        });
+
+        socket.on('receiveMessage', (msg) => {
+            const area = document.getElementById('adminChatLogsArea');
+            area.innerHTML += `<div class="chat-msg"><span class="author">${msg.sender}:</span> ${msg.text}</div>`;
+            area.scrollTop = area.scrollHeight;
+        });
+    </script>
 </body>
 </html>
-
