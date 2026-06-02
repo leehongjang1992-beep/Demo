@@ -18,8 +18,8 @@ let gameState = {
     calledNumbers: [],
     timerActive: false,
     timeLeft: 0,
-    gameStatus: "WAITING", // WAITING, REGISTRATION, STARTED
-    playMode: "manual" // manual ya auto
+    gameStatus: "WAITING",
+    playMode: "manual"
 };
 
 let timerInterval = null;
@@ -40,7 +40,6 @@ function updateAdminDashboard() {
     });
 }
 
-// Helper for Auto Play Drawing
 function drawAutomaticNumber() {
     let remaining = [];
     for (let i = 1; i <= 90; i++) {
@@ -53,7 +52,7 @@ function drawAutomaticNumber() {
     let randomIndex = Math.floor(Math.random() * remaining.length);
     let drawnNum = remaining[randomIndex];
     
-    gameState.calledNumbers.unshift(drawnNum);
+    gameState.calledNumbers.push(drawnNum); // Server records values natively
     gameState.latestBall = drawnNum;
     
     io.emit('gameUpdate', gameState);
@@ -76,8 +75,6 @@ io.on('connection', (socket) => {
             socket.emit('adminAuthSuccess');
             updateAdminDashboard();
             socket.emit('chatHistory', chatHistory);
-        } else {
-            socket.emit('adminAuthFailure', 'Invalid Admin Pin!');
         }
     });
 
@@ -104,17 +101,21 @@ io.on('connection', (socket) => {
                 gameState.gameStatus = "STARTED";
                 io.emit('gameUpdate', gameState);
                 updateAdminDashboard();
+                
+                // Trigger auto trigger system if it was preselected beforehand
+                if(gameState.playMode === "auto") {
+                    autoPlayInterval = setInterval(drawAutomaticNumber, 7000);
+                }
             }
         }, 1000);
     });
 
-    // Handle Manual or Auto mode switch from admin
     socket.on('switchPlayMode', (mode) => {
         gameState.playMode = mode;
         if (autoPlayInterval) clearInterval(autoPlayInterval);
         
         if (mode === "auto" && gameState.gameStatus === "STARTED") {
-            autoPlayInterval = setInterval(drawAutomaticNumber, 7000); // Har 7 second me automatic number draw
+            autoPlayInterval = setInterval(drawAutomaticNumber, 7000);
         }
         updateAdminDashboard();
     });
@@ -122,7 +123,7 @@ io.on('connection', (socket) => {
     socket.on('newNumber', (num) => {
         const parsedNum = parseInt(num);
         if (!gameState.calledNumbers.includes(parsedNum)) {
-            gameState.calledNumbers.unshift(parsedNum);
+            gameState.calledNumbers.push(parsedNum);
         }
         gameState.latestBall = parsedNum;
         gameState.gameStatus = "STARTED";
@@ -131,25 +132,22 @@ io.on('connection', (socket) => {
         updateAdminDashboard();
     });
 
-    // 🏆 Global Win Declaration Handler
     socket.on('claimWinEvent', (data) => {
-        // BroadCast SMS type window alert box to everyone
         io.emit('victoryNotificationPopup', {
             winner: data.winner,
             claimType: data.claimType
         });
     });
 
-    // 🔄 Game Reset Engine + Chat Wiper
     socket.on('resetGame', () => {
         if (timerInterval) clearInterval(timerInterval);
         if (autoPlayInterval) clearInterval(autoPlayInterval);
         
         gameState = { latestBall: "-", calledNumbers: [], timerActive: false, timeLeft: 0, gameStatus: "WAITING", playMode: "manual" };
-        chatHistory = []; // Purana sara chat clear ho jayega
+        chatHistory = [];
         
         io.emit('gameUpdate', gameState);
-        io.emit('chatHistory', chatHistory); // Users ki screen par bhi clear clear broadcast
+        io.emit('chatHistory', chatHistory);
         updateAdminDashboard();
     });
 
@@ -172,4 +170,4 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(PORT, () => console.log(`🚀 Tambola Dynamic Engine Running on Port ${PORT}`));
+server.listen(PORT, () => console.log(`🚀 Master Application Active On Port ${PORT}`));
