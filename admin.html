@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tambola Control Console</title>
+    <title>Tambola Master Console</title>
     <link rel="stylesheet" href="style.css">
     <script src="/socket.io/socket.io.js"></script>
     <style>
@@ -13,9 +13,10 @@
             aspect-ratio: 1; display: flex; align-items: center; justify-content: center; 
             font-size: 1.2rem; font-weight: 800; border-radius: 8px; cursor: pointer; transition: all 0.2s;
         }
-        .board-cell:hover { border-color: var(--primary); transform: scale(1.05); }
         .board-cell.called { background: var(--accent-success); color: #000; box-shadow: 0 0 12px var(--accent-success); }
         .master-display { display: flex; justify-content: space-between; align-items: center; background: var(--bg-input); padding: 1rem; border-radius: 12px; margin-bottom: 1rem; }
+        .mode-btn { padding: 10px 20px; font-weight: bold; font-size: 1rem; cursor: pointer; border: 2px solid transparent; border-radius: 8px; }
+        .mode-active { background-color: var(--accent-success) !important; color: black !important; border-color: #fff; }
     </style>
 </head>
 <body>
@@ -24,50 +25,53 @@
         <div class="auth-card">
             <h2>Housie Admin Portal</h2>
             <div class="form-group">
-                <label>Master Code Pin</label>
                 <input type="password" id="adminPassInput" placeholder="Enter Admin Pin (admin123)">
             </div>
             <button class="btn btn-danger" onclick="executeAdminAuth()">Launch Control Board</button>
-            <div id="authErrMsg" style="color:var(--accent-danger); font-size:0.85rem; margin-top:0.8rem; display:none;"></div>
+            <div id="authErrMsg" style="color:var(--accent-danger); display:none;"></div>
         </div>
     </div>
 
     <div class="app-container" id="adminMainLayout" style="display:none; max-width: 950px;">
         <header>
             <div>
-                <h1 style="font-size: 1.5rem; color: var(--accent-danger); font-weight: 800;">🎙️ HOUSIE CONTROL DESK</h1>
-                <p style="font-size: 0.8rem; color: var(--text-muted);">Double click configuration security layer enabled</p>
+                <h1 style="font-size: 1.5rem; color: var(--accent-danger); font-weight: 800;">🎙️ CONTROL DESK</h1>
             </div>
             <div style="display:flex; gap:10px;">
-                <button class="btn btn-primary" style="width: auto;" onclick="socket.emit('startRegistrationWindow')">⏳ Start 1 Min Entry</button>
-                <button class="btn btn-danger" style="width: auto;" onclick="triggerReset()">🔄 Wipe Game</button>
+                <button class="btn btn-primary" onclick="socket.emit('startRegistrationWindow')">⏳ Start 1 Min Entry</button>
+                <button class="btn btn-danger" onclick="triggerReset()">🔄 Wipe Game & Chat</button>
             </div>
         </header>
+
+        <div class="card" style="display:flex; justify-content: space-around; padding: 1rem; margin-bottom: 1rem;">
+            <button id="manualModeBtn" class="mode-btn mode-active" onclick="changeEngineMode('manual')">🎮 MANUAL MODE (Click Draw)</button>
+            <button id="autoModeBtn" class="mode-btn" onclick="changeEngineMode('auto')">🤖 AUTO PLAY (7s Engine Loop)</button>
+        </div>
 
         <div class="grid-layout" style="grid-template-columns: 1.6fr 1fr;">
             <div>
                 <div class="master-display">
                     <div>
-                        <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Current Ball Status</span>
+                        <span>Current Ball Status</span>
                         <div id="currentBallDisplay" style="font-size: 3.5rem; font-weight: 900; color: #ffb020;">-</div>
                     </div>
                     <div>
-                        <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Game Engine Status</span>
+                        <span>Engine Status</span>
                         <div id="engineStatusLabel" style="font-size: 1.2rem; font-weight: 800; color: var(--accent-success);">WAITING</div>
                     </div>
                 </div>
 
                 <div class="card">
-                    <h3>🔢 Master 1-90 Grid (Asks Confirmation on Click)</h3>
+                    <h3 id="gridTitle">🔢 Click to Draw Number</h3>
                     <div class="board-grid" id="mainAdminBoard"></div>
                 </div>
             </div>
 
-            <div class="card chat-container" style="height: 100%;">
-                <h3>💬 Live Lounge Chat Audit System</h3>
-                <div class="chat-logs" id="adminChatLogsArea" style="flex-grow:1; height:350px;"></div>
+            <div class="card chat-container">
+                <h3>💬 Chat Audit Workspace</h3>
+                <div class="chat-logs" id="adminChatLogsArea" style="height:350px;"></div>
                 <div class="chat-input-wrapper">
-                    <input type="text" id="adminChatMessageField" placeholder="Broadcast notification...">
+                    <input type="text" id="adminChatMessageField" placeholder="Broadcast text...">
                     <button class="btn btn-danger" onclick="submitAdminChatMessage()">Send</button>
                 </div>
             </div>
@@ -76,21 +80,16 @@
 
     <script>
         const socket = io();
+        let activeMode = "manual";
         
         function executeAdminAuth() {
-            const password = document.getElementById('adminPassInput').value;
-            socket.emit('adminLogin', password);
+            socket.emit('adminLogin', document.getElementById('adminPassInput').value);
         }
 
         socket.on('adminAuthSuccess', () => {
             document.getElementById('adminAuthGate').style.display = 'none';
             document.getElementById('adminMainLayout').style.display = 'block';
             buildAdminBoard();
-        });
-
-        socket.on('adminAuthFailure', (msg) => {
-            const err = document.getElementById('authErrMsg');
-            err.textContent = msg; err.style.display = 'block';
         });
 
         function buildAdminBoard() {
@@ -101,21 +100,27 @@
                 cell.className = 'board-cell';
                 cell.id = `admin-num-${i}`;
                 cell.textContent = i;
-                cell.onclick = () => confirmAndSend(i);
+                cell.onclick = () => handleCellClick(i);
                 grid.appendChild(cell);
             }
         }
 
-        // 🛡️ Security Gate confirmation system to prevent misclick
-        function confirmAndSend(num) {
-            let confirmation = confirm(`Kya aap sach me Number ${num} ko live announcement board par bhejna chahte hain?`);
-            if (confirmation) {
+        function changeEngineMode(mode) {
+            socket.emit('switchPlayMode', mode);
+        }
+
+        function handleCellClick(num) {
+            if(activeMode === "auto") {
+                alert("Auto-Play ON hai! Manual click karne ke liye pehle Manual Mode toggle karein.");
+                return;
+            }
+            if(confirm(`Send number ${num}?`)) {
                 socket.emit('newNumber', num);
             }
         }
 
         function triggerReset() {
-            if(confirm("Puray board data reset karein?")) {
+            if(confirm("Reset pure game records and wipe entire logs chat database?")) {
                 socket.emit('resetGame');
             }
         }
@@ -123,6 +128,17 @@
         socket.on('adminDashboardUpdate', (data) => {
             document.getElementById('currentBallDisplay').textContent = data.latestBall;
             document.getElementById('engineStatusLabel').textContent = data.gameStatus;
+            activeMode = data.playMode;
+
+            if(activeMode === "auto") {
+                document.getElementById('autoModeBtn').classList.add('mode-active');
+                document.getElementById('manualModeBtn').classList.remove('mode-active');
+                document.getElementById('gridTitle').textContent = "🤖 AUTO ENGINE DRAWING RUNNING...";
+            } else {
+                document.getElementById('manualModeBtn').classList.add('mode-active');
+                document.getElementById('autoModeBtn').classList.remove('mode-active');
+                document.getElementById('gridTitle').textContent = "🔢 Click to Draw Number Manually";
+            }
             
             for(let i = 1; i <= 90; i++) {
                 const cell = document.getElementById(`admin-num-${i}`);
