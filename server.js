@@ -18,7 +18,7 @@ let gameState = {
     calledNumbers: [],
     timerActive: false,
     timeLeft: 0,
-    gameStatus: "WAITING",
+    gameStatus: "WAITING", // WAITING, REGISTRATION, STARTED, OVER
     playMode: "manual"
 };
 
@@ -41,18 +41,27 @@ function updateAdminDashboard() {
 }
 
 function drawAutomaticNumber() {
+    // If game state is set to OVER, explicitly prevent pulling values
+    if(gameState.gameStatus === "OVER") {
+        if(autoPlayInterval) clearInterval(autoPlayInterval);
+        return;
+    }
+
     let remaining = [];
     for (let i = 1; i <= 90; i++) {
         if (!gameState.calledNumbers.includes(i)) remaining.push(i);
     }
     if (remaining.length === 0) {
+        gameState.gameStatus = "OVER";
         if (autoPlayInterval) clearInterval(autoPlayInterval);
+        io.emit('gameUpdate', gameState);
+        updateAdminDashboard();
         return;
     }
     let randomIndex = Math.floor(Math.random() * remaining.length);
     let drawnNum = remaining[randomIndex];
     
-    gameState.calledNumbers.push(drawnNum); // Server records values natively
+    gameState.calledNumbers.push(drawnNum);
     gameState.latestBall = drawnNum;
     
     io.emit('gameUpdate', gameState);
@@ -78,13 +87,14 @@ io.on('connection', (socket) => {
         }
     });
 
+    // ⏳ 30-Second Countdown initialization logic block
     socket.on('startRegistrationWindow', () => {
         if (timerInterval) clearInterval(timerInterval);
         if (autoPlayInterval) clearInterval(autoPlayInterval);
         
         gameState.gameStatus = "REGISTRATION";
         gameState.timerActive = true;
-        gameState.timeLeft = 60;
+        gameState.timeLeft = 30; // 30 seconds setup requirement enforced
         gameState.calledNumbers = [];
         gameState.latestBall = "-";
 
@@ -102,7 +112,6 @@ io.on('connection', (socket) => {
                 io.emit('gameUpdate', gameState);
                 updateAdminDashboard();
                 
-                // Trigger auto trigger system if it was preselected beforehand
                 if(gameState.playMode === "auto") {
                     autoPlayInterval = setInterval(drawAutomaticNumber, 7000);
                 }
@@ -121,6 +130,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('newNumber', (num) => {
+        if(gameState.gameStatus === "OVER") return;
         const parsedNum = parseInt(num);
         if (!gameState.calledNumbers.includes(parsedNum)) {
             gameState.calledNumbers.push(parsedNum);
@@ -132,11 +142,22 @@ io.on('connection', (socket) => {
         updateAdminDashboard();
     });
 
+    // Validates winning notification claims
     socket.on('claimWinEvent', (data) => {
+        // Broadcast the specific username and win metadata
         io.emit('victoryNotificationPopup', {
             winner: data.winner,
-            claimType: data.claimType
+            claimType: data.claimType,
+            bonus: data.bonus
         });
+
+        // 🏁 CRITICAL RULE: If Full House is claimed, enforce Game Over immediately
+        if(data.claimType === "FULL HOUSE") {
+            gameState.gameStatus = "OVER";
+            if(autoPlayInterval) clearInterval(autoPlayInterval); // Clear automation loops
+            io.emit('gameUpdate', gameState);
+            updateAdminDashboard();
+        }
     });
 
     socket.on('resetGame', () => {
@@ -170,4 +191,4 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(PORT, () => console.log(`🚀 Master Application Active On Port ${PORT}`));
+server.listen(PORT, () => console.log(`🚀 Automated Engine Active On Port ${PORT}`));
