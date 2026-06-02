@@ -3,130 +3,148 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tambola Lounge Elite</title>
+    <title>Tambola Lounge Elite - Premium Tracker</title>
     <link rel="stylesheet" href="style.css">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         :root {
             --primary-glow: #6366f1;
             --surface-card: #0f172a;
+            --hot-gold: #eab308;
         }
-        body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: #020617; color: #f8fafc; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: #020617; color: #f8fafc; margin: 0; padding: 10px; }
         
         .timer-banner { 
-            background: linear-gradient(135deg, #1e1b4b, #311042); 
-            padding: 1.2rem; border-radius: 16px; text-align: center; 
-            font-size: 1.4rem; font-weight: 800; display: none; 
-            border: 1px solid var(--primary-glow);
+            background: linear-gradient(135deg, #be123c, #1e1b4b); 
+            padding: 1rem; border-radius: 12px; text-align: center; 
+            font-size: 1.3rem; font-weight: 800; display: none; 
+            border: 1px solid #f43f5e; margin-bottom: 15px;
         }
         
-        /* Premium Dashboard Head Layout */
+        /* 👑 MAIN DASHBOARD UPGRADE */
         .game-status-card { 
-            background: var(--surface-card); border: 1px solid var(--border-color); 
-            border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem;
+            background: var(--surface-card); border: 1px solid #334155; 
+            border-radius: 16px; padding: 1.2rem; margin-bottom: 1.5rem;
             display: grid; grid-template-columns: 1fr; gap: 20px;
         }
-        @media (min-width: 768px) {
-            .game-status-card { grid-template-columns: 1.2fr 2fr; }
-        }
+        @media (min-width: 768px) { .game-status-card { grid-template-columns: 1.3fr 2fr; } }
 
+        /* 🔥 TOPMOST SUPER SPOTLIGHT FRAME */
         .current-ball-zone {
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            background: rgba(255,255,255,0.03); padding: 1rem; border-radius: 12px; border: 1px dashed rgba(255,255,255,0.1);
+            background: linear-gradient(180deg, #1e293b, #090d16); padding: 1.5rem; border-radius: 12px; 
+            border: 2px solid var(--primary-glow); position: relative; box-shadow: 0 4px 20px rgba(99, 102, 241, 0.2);
         }
+        
         .live-ball { 
-            width: 95px; height: 95px; 
-            background: radial-gradient(circle at 30% 30%, #f43f5e, #be123c); 
+            width: 115px; height: 115px; 
+            background: radial-gradient(circle at 30% 30%, #3b82f6, #1d4ed8); 
             border-radius: 50%; display: flex; align-items: center; justify-content: center; 
-            font-size: 3rem; font-weight: 900; color: #fff; 
-            box-shadow: 0 0 25px rgba(244,63,94,0.6); margin-top: 10px;
+            font-size: 3.8rem; font-weight: 900; color: #fff; 
+            box-shadow: 0 0 25px rgba(59, 130, 246, 0.6); margin-top: 10px;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        
+        /* ⭐ JAB APKE TICKET KA SABSE ACHA NUMBER HIT HOGA (SABSE UPER SPOTLIGHT) */
+        .live-ball.super-hit {
+            background: radial-gradient(circle at 30% 30%, #f59e0b, #d97706) !important;
+            box-shadow: 0 0 40px #f59e0b !important;
+            color: #000 !important;
+            transform: scale(1.1) translateY(-5px);
         }
 
-        /* 🔢 Full 1-90 Tracking Board Display inside User Screen */
-        .user-full-board {
-            display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; 
-            background: #020617; padding: 10px; border-radius: 12px;
-        }
-        .user-board-cell {
-            background: #1e293b; color: #64748b; font-size: 0.9rem; font-weight: 700;
-            aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
-            border-radius: 6px; transition: all 0.3s ease;
-        }
-        .user-board-cell.called-active {
-            background: #ef4444 !important; color: #ffffff !important;
-            box-shadow: 0 0 10px #ef4444; transform: scale(1.05);
+        .lucky-badge {
+            background: rgba(234, 179, 8, 0.15); color: var(--hot-gold);
+            padding: 4px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 800;
+            margin-top: 8px; border: 1px solid rgba(234, 179, 8, 0.3); display: none;
         }
 
-        /* Ticket Design Framework */
+        .wallet-badge {
+            background: linear-gradient(135deg, #eab308, #ca8a04); color: #000; 
+            padding: 6px 16px; border-radius: 50px; font-weight: 800; font-size: 1rem; 
+            display: inline-flex; align-items: center; gap: 6px;
+        }
+
+        .user-full-board { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; background: #020617; padding: 10px; border-radius: 12px; }
+        .user-board-cell { background: #1e293b; color: #64748b; font-size: 0.9rem; font-weight: 700; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 6px; }
+        .user-board-cell.called-active { background: #ef4444 !important; color: #ffffff !important; box-shadow: 0 0 10px #ef4444; }
+
+        /* Ticket Containers */
         .tickets-container { display: grid; grid-template-columns: 1fr; gap: 1.5rem; margin-top: 1.5rem; }
         @media (min-width: 768px) { .tickets-container { grid-template-columns: repeat(2, 1fr); } }
-        .ticket-box { background: var(--surface-card); border: 1px solid var(--border-color); border-radius: 14px; padding: 1.2rem; position: relative; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .ticket-box { background: var(--surface-card); border: 1px solid #334155; border-radius: 14px; padding: 1.2rem; transition: all 0.3s; }
+        .ticket-box.high-score { border-color: var(--hot-gold); box-shadow: 0 0 15px rgba(234, 179, 8, 0.2); }
         .ticket-grid { display: grid; grid-template-columns: repeat(9, 1fr); background: #334155; gap: 1px; border-radius: 8px; overflow: hidden; }
         .ticket-cell { background: #0f172a; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: 800; color: #f1f5f9; position: relative; }
         .ticket-cell.empty { background: #1e293b; }
-        .ticket-cell.struck { color: #475569 !important; background-color: #0f172a !important; }
         .ticket-cell.struck::after { content: ''; position: absolute; width: 85%; height: 4px; background: #ef4444; border-radius: 2px; transform: rotate(-30deg); box-shadow: 0 0 5px #ef4444; }
         
-        /* Premium SMS Window Alert Box */
-        .win-popup { display:none; position: fixed; top: 30%; left: 50%; transform: translate(-50%, -50%); background: linear-gradient(135deg, #10b981, #047857); color: white; padding: 2rem; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.7); z-index: 10000; text-align: center; font-weight: 900; width: 85%; max-width: 420px; border: 2px solid #fff; }
+        .win-popup { display:none; position: fixed; top: 35%; left: 50%; transform: translate(-50%, -50%); background: linear-gradient(135deg, #10b981, #047857); color: white; padding: 2rem; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); z-index: 10000; text-align: center; font-weight: 900; width: 85%; max-width: 420px; border: 3px solid #fff; }
     </style>
 </head>
 <body>
 
     <div id="victoryPopupBox" class="win-popup">
-        <h2 style="font-size: 1.8rem; margin: 0; color: #fff;">🏆 WINNER ALARM 🏆</h2>
-        <p id="victoryBodyContent" style="font-size: 1.2rem; margin: 15px 0; color: #e2e8f0;"></p>
-        <button class="btn" style="background:#fff; color:#000; font-weight:bold; border-radius:8px;" onclick="document.getElementById('victoryPopupBox').style.display='none'">Awesome!</button>
+        <h2 style="font-size: 1.8rem; margin: 0; color: #fff;">🏆 CLAIM SUCCESSFUL! 🏆</h2>
+        <p id="victoryBodyContent" style="font-size: 1.3rem; margin: 15px 0; color: #fff;"></p>
+        <button class="btn" style="background:#fff; color:#000; font-weight:bold; border-radius:8px; padding: 8px 20px;" onclick="document.getElementById('victoryPopupBox').style.display='none'">Dismiss</button>
     </div>
 
     <div class="auth-container" id="authGate">
         <div class="auth-card">
-            <h2>Housie Terminal Entry</h2>
+            <h2>Housie Lounge Entry</h2>
             <div class="form-group">
-                <input type="text" id="nicknameInput" placeholder="Enter Nickname...">
+                <input type="text" id="nicknameInput" placeholder="Enter Your Name...">
             </div>
-            <button class="btn btn-primary" onclick="processUserAuth()">Enter Lounge</button>
+            <button class="btn btn-primary" onclick="processUserAuth()">Join Arena</button>
         </div>
     </div>
 
     <div class="app-container" id="mainAppLayout" style="max-width: 1000px; display: none;">
         
         <div class="timer-banner" id="registrationClockBanner">
-            ⏳ ROUND ENTRY WINDOW CLOSING IN: <span id="timerClock">00:60</span>
+            ⚔️ GAME TIMELINE INITIATED! STARTING IN: <span id="timerClock">30</span>s
         </div>
 
         <div class="game-status-card">
-            <div class="current-ball-zone">
-                <h3 id="statusContextLabel" style="color: #10b981; font-size: 0.9rem; letter-spacing:1px; text-transform:uppercase; margin:0;">🟢 WAITING</h3>
+            <div class="current-ball-zone" id="spotlightZoneContainer">
+                <div style="display:flex; justify-content:space-between; width:100%; align-items:center; margin-bottom:5px;">
+                    <span id="statusContextLabel" style="color: #10b981; font-size: 0.85rem; font-weight:800;">🟢 WAITING</span>
+                    <div class="wallet-badge">🪙 <span id="userWalletBalance">500</span></div>
+                </div>
+                
+                <span id="ballNotificationType" style="font-size:0.8rem; color:#94a3b8; text-transform:uppercase; font-weight:bold; letter-spacing:0.5px;">LATEST BALL STATUS</span>
+                
                 <div class="live-ball" id="userBallDisplay">-</div>
+                
+                <div class="lucky-badge" id="luckyTicketTelemetry">🔥 TICKET #1 IS CLOSING IN ON WIN!</div>
             </div>
             
             <div>
-                <h4 style="margin: 0 0 8px 0; font-size:0.85rem; color:#94a3b8; text-transform:uppercase;">🔢 1-90 Live Game Status Board</h4>
+                <h4 style="margin: 0 0 8px 0; font-size:0.85rem; color:#94a3b8; text-transform:uppercase;">🔢 Live 1-90 Tracking Board Grid</h4>
                 <div class="user-full-board" id="clientFullBoardMap"></div>
             </div>
         </div>
 
         <div class="grid-layout" style="grid-template-columns: 1fr;">
-            
             <div class="card" id="shopArea" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:15px; background:var(--surface-card); border-color:#334155;">
                 <div>
-                    <label style="font-weight:700; font-size:1rem; color:#cbd5e1;">Select Ticket Quantity:</label>
+                    <label style="font-weight:700; font-size:1rem; color:#cbd5e1;">Select Ticket Multiplicity Hand Count:</label>
                     <input type="number" id="ticketQuantityInput" value="4" min="1" max="12" style="width:75px; text-align:center; margin-left:10px; padding:6px; font-weight:bold; background:#1e293b; color:#fff; border:1px solid #475569; border-radius:6px;">
                 </div>
-                <button class="btn btn-success" style="width:auto; padding:12px 30px; font-weight:800;" onclick="procureTickets()">🎟️ Procure Active Cards</button>
+                <button class="btn btn-success" style="width:auto; padding:12px 30px; font-weight:800;" onclick="procureTickets()">🎟️ Generate and Save Tickets</button>
             </div>
 
             <div id="ticketsSection" style="display: none;">
-                <h3 style="font-size: 1.3rem; border-left:4px solid #6366f1; padding-left:10px; margin-bottom:1rem;">🎯 Your Hand-Held Game Cards</h3>
+                <h3 style="font-size: 1.2rem; border-left:4px solid #6366f1; padding-left:10px; margin-bottom:1rem;">🎯 Handheld Matrix Play Cards</h3>
                 <div class="tickets-container" id="ticketsWrapper"></div>
             </div>
 
-            <div class="card chat-container" style="background:var(--surface-card); height: 280px; margin-top:10px;">
-                <h3 style="font-size:0.9rem; margin:0 0 5px 0; color:#94a3b8;">💬 Lounge Active Chat Logs</h3>
-                <div class="chat-logs" id="chatLogsArea" style="height: 170px;"></div>
+            <div class="card chat-container" style="background:var(--surface-card); height: 250px; margin-top:10px;">
+                <h3 style="font-size:0.85rem; margin:0 0 5px 0; color:#94a3b8;">💬 Active Chat Workspace</h3>
+                <div class="chat-logs" id="chatLogsArea" style="height: 140px;"></div>
                 <div class="chat-input-wrapper">
-                    <input type="text" id="chatMessageField" placeholder="Send a message to room...">
+                    <input type="text" id="chatMessageField" placeholder="Type message...">
                     <button class="btn btn-primary" onclick="submitUserChatMessage()">Send</button>
                 </div>
             </div>
@@ -138,16 +156,17 @@
         let myUsername = "";
         let myGeneratedTickets = [];
         let lastSpokenNumber = null;
+        let tokensBalance = 500;
 
-        // Tracks milstones per single unique sheet grid container mapping matrix
         let milestoneClaims = { earlyFive: false, middleLine: false, fullHouse: false };
 
         function processUserAuth() {
             const name = document.getElementById('nicknameInput').value.trim();
-            if(!name) return alert("Please specify username handle.");
+            if(!name) return alert("Please specify user handle name.");
             myUsername = name;
             socket.emit('joinGame', name);
             buildBaseClientBoard();
+            document.getElementById('userWalletBalance').textContent = tokensBalance;
         }
 
         socket.on('initUser', (user) => {
@@ -155,7 +174,6 @@
             document.getElementById('mainAppLayout').style.display = 'block';
         });
 
-        // Instantiate complete 1 to 90 background elements map framework structure
         function buildBaseClientBoard() {
             const targetGrid = document.getElementById('clientFullBoardMap');
             targetGrid.innerHTML = '';
@@ -171,31 +189,109 @@
         socket.on('syncTimer', (timeLeft) => {
             const banner = document.getElementById('registrationClockBanner');
             banner.style.display = "block";
-            document.getElementById('timerClock').textContent = `00:${timeLeft < 10 ? '0'+timeLeft : timeLeft}`;
+            document.getElementById('timerClock').textContent = timeLeft;
         });
 
+        /* 🧠 EXPERT ALGORITHM ENGINE: Checks which ticket gets maximum weight advantage from the drawn number */
+        function calculateBestTicketPriorityMatch(calledNumbers, latestBall) {
+            if(!latestBall || latestBall === "-") return { isBestMatch: false, ticketIndex: -1, score: 0 };
+            
+            let bestTicketIndex = -1;
+            let maxScoreFound = 0;
+            let ballIsInSomeTicket = false;
+
+            myGeneratedTickets.forEach((matrix, t) => {
+                let ballInThisTicket = false;
+                let singleTicketStruckCount = 0;
+
+                // Loop layout to scan metrics
+                for(let r=0; r<3; r++) {
+                    for(let c=0; c<9; c++) {
+                        let val = matrix[r][c];
+                        if(val !== 0) {
+                            if(calledNumbers.includes(val)) {
+                                singleTicketStruckCount++;
+                            }
+                            if(val === parseInt(latestBall)) {
+                                ballInThisTicket = true;
+                                ballIsInSomeTicket = true;
+                            }
+                        }
+                    }
+                }
+
+                // If this specific ticket holds the latest ball, calculate its strength value
+                if(ballInThisTicket) {
+                    // Score is high if the ticket already has many struck numbers (meaning it's closer to Full House/Wins!)
+                    let ticketPriorityWeightScore = singleTicketStruckCount; 
+                    if(ticketPriorityWeightScore > maxScoreFound) {
+                        maxScoreFound = ticketPriorityWeightScore;
+                        bestTicketIndex = t;
+                    }
+                }
+            });
+
+            return {
+                isBestMatch: ballIsInSomeTicket,
+                ticketIndex: bestTicketIndex,
+                score: maxScoreFound
+            };
+        }
+
         socket.on('gameUpdate', (state) => {
-            document.getElementById('userBallDisplay').textContent = state.latestBall;
+            const currentBall = state.latestBall;
+            document.getElementById('userBallDisplay').textContent = currentBall;
             if(!state.timerActive) document.getElementById('registrationClockBanner').style.display = "none";
 
             const statusLabel = document.getElementById('statusContextLabel');
-            if(state.gameStatus === "REGISTRATION") statusLabel.textContent = "⏳ REGISTRATION OPEN";
-            else if(state.gameStatus === "STARTED") statusLabel.textContent = "🔴 GAME IN PROGRESS";
-            else statusLabel.textContent = "🟢 WAITING";
+            if(state.gameStatus === "REGISTRATION") statusLabel.textContent = "⏳ COUNTDOWN";
+            else if(state.gameStatus === "STARTED") statusLabel.textContent = "🔴 LIVE MATCH";
+            else if(state.gameStatus === "OVER") statusLabel.textContent = "🏁 GAME OVER";
+            else statusLabel.textContent = "🟢 OPEN";
 
-            // Update full 1-90 board statuses colors cleanly
+            // Execute priority audit calculation check routing 
+            const evaluation = calculateBestTicketPriorityMatch(state.calledNumbers, currentBall);
+            
+            const ballVisualElement = document.getElementById('userBallDisplay');
+            const labelNotification = document.getElementById('ballNotificationType');
+            const telemetryBadge = document.getElementById('luckyTicketTelemetry');
+            const containerFrame = document.getElementById('spotlightZoneContainer');
+
+            // Reset ticket border boxes classes styles
+            document.querySelectorAll('.ticket-box').forEach(box => box.classList.remove('high-score'));
+
+            if(evaluation.isBestMatch) {
+                // 🔥 Boom! Super hit priority detection triggered!
+                ballVisualElement.classList.add('super-hit');
+                containerFrame.style.borderColor = "var(--hot-gold)";
+                
+                labelNotification.textContent = "🔥 CRITICAL LUCKY HIT FOUND!";
+                labelNotification.style.color = "var(--hot-gold)";
+                
+                telemetryBadge.style.display = "block";
+                telemetryBadge.textContent = `🎯 EXCELLENT MATCH HIT ON TICKET #${evaluation.evaluation ? evaluation.ticketIndex + 1 : evaluation.ticketIndex + 1} (Score Track: ${evaluation.score}/15)`;
+                
+                // Highlight that particular best ticket sheet frame array index directly
+                const hotBox = document.getElementById(`ticket-box-id-${evaluation.ticketIndex}`);
+                if(hotBox) hotBox.classList.add('high-score');
+            } else {
+                // Fallback to normal standard layout style representation if number doesn't exist on hand cards
+                ballVisualElement.classList.remove('super-hit');
+                containerFrame.style.borderColor = "var(--primary-glow)";
+                labelNotification.textContent = "LATEST BALL STATUS";
+                labelNotification.style.color = "#94a3b8";
+                telemetryBadge.style.display = "none";
+            }
+
+            // Sync 1-90 board mapping cells colors safely
             for(let i=1; i<=90; i++) {
                 const element = document.getElementById(`client-board-num-${i}`);
                 if(element) {
-                    if(state.calledNumbers.includes(i)) {
-                        element.classList.add('called-active');
-                    } else {
-                        element.classList.remove('called-active');
-                    }
+                    if(state.calledNumbers.includes(i)) element.classList.add('called-active');
+                    else element.classList.remove('called-active');
                 }
             }
 
-            // Audio Speech Synthesis Trigger Logic Routine
             if(state.latestBall !== "-" && state.latestBall !== lastSpokenNumber) {
                 lastSpokenNumber = state.latestBall;
                 if ('speechSynthesis' in window) {
@@ -206,14 +302,19 @@
 
             if(state.calledNumbers.length === 0) {
                 resetAllTicketStrikes();
-            } else {
+            } else if(state.gameStatus === "STARTED") {
                 autoStrikeAndCheckWins(state.calledNumbers);
             }
         });
 
         socket.on('victoryNotificationPopup', (data) => {
-            document.getElementById('victoryBodyContent').innerHTML = `🎉 Player <strong>${data.winner}</strong> completed <strong>${data.claimType}</strong>!`;
+            document.getElementById('victoryBodyContent').innerHTML = `👤 Player: <strong>${data.winner}</strong><br>🎯 Claimed: <strong style="color:var(--hot-gold);">${data.claimType}</strong><br>💰 Reward: <span style="color:#4ade80;">+${data.bonus} Tokens</span>`;
             document.getElementById('victoryPopupBox').style.display = 'block';
+
+            if(data.winner === myUsername) {
+                tokensBalance += data.bonus;
+                document.getElementById('userWalletBalance').textContent = tokensBalance;
+            }
         });
 
         function procureTickets() {
@@ -230,7 +331,8 @@
                 myGeneratedTickets.push(matrix);
                 let box = document.createElement('div');
                 box.className = 'ticket-box';
-                let html = `<div style="font-size:0.85rem; margin-bottom:8px; color:#94a3b8; font-weight:700; letter-spacing:0.5px;">TICKET SHEET CARD #${t+1}</div><div class="ticket-grid">`;
+                box.id = `ticket-box-id-${t}`;
+                let html = `<div style="font-size:0.8rem; margin-bottom:6px; color:#94a3b8; font-weight:700;">TICKET PLATFORM FRAME #${t+1}</div><div class="ticket-grid">`;
                 for(let r=0; r<3; r++) {
                     for(let c=0; c<9; c++) {
                         let val = matrix[r][c];
@@ -242,7 +344,6 @@
             }
         }
 
-        // 🎯 FIXED CRITICAL AUDITING RULE: Wins checked individually inside EACH unique isolated sheet map context matrix
         function autoStrikeAndCheckWins(calledNumbers) {
             myGeneratedTickets.forEach((matrix, t) => {
                 let singleTicketStruckCount = 0;
@@ -262,22 +363,19 @@
                     }
                 }
 
-                // Rule 1: Early Five -> 5 Strikes must belong strictly to this specific single sheet card sheet
                 if(singleTicketStruckCount >= 5 && !milestoneClaims.earlyFive) {
                     milestoneClaims.earlyFive = true;
-                    socket.emit('claimWinEvent', { winner: myUsername, claimType: "EARLY FIVE" });
+                    socket.emit('claimWinEvent', { winner: myUsername, claimType: "EARLY FIVE", bonus: 200 });
                 }
 
-                // Rule 2: Middle Line Row Strike must all belong inside index row 1 of this exact ticket sheet container matrix
                 if(singleTicketMiddleRowStruckCount === 5 && !milestoneClaims.middleLine) {
                     milestoneClaims.middleLine = true;
-                    socket.emit('claimWinEvent', { winner: myUsername, claimType: "MIDDLE LINE" });
+                    socket.emit('claimWinEvent', { winner: myUsername, claimType: "MIDDLE LINE", bonus: 200 });
                 }
 
-                // Rule 3: Full house -> all 15 values of this specific ticket matched
                 if(singleTicketStruckCount === 15 && !milestoneClaims.fullHouse) {
                     milestoneClaims.fullHouse = true;
-                    socket.emit('claimWinEvent', { winner: myUsername, claimType: "FULL HOUSE" });
+                    socket.emit('claimWinEvent', { winner: myUsername, claimType: "FULL HOUSE", bonus: 500 });
                 }
             });
         }
@@ -287,6 +385,7 @@
             document.getElementById('userBallDisplay').textContent = '-';
             document.getElementById('shopArea').style.display = 'flex';
             document.getElementById('ticketsSection').style.display = 'none';
+            document.getElementById('luckyTicketTelemetry').style.display = "none";
             lastSpokenNumber = null;
         }
 
