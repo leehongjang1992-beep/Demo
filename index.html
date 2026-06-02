@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tambola Live Club - Play Lounge</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+
+    <div class="auth-container" id="authGate">
+        <div class="auth-card">
+            <h2>Lounge Identity Gate</h2>
+            <p>Establish your unique handle name to connect live.</p>
+            <div class="form-group">
+                <label>Desired Nickname</label>
+                <input type="text" id="nicknameInput" placeholder="Enter name (e.g., Kabir)" maxlength="15">
+            </div>
+            <button class="btn btn-primary" onclick="processUserAuth()">Enter Club Room</button>
+        </div>
+    </div>
+
+    <div class="app-container" id="mainAppLayout">
+        <header>
+            <div>
+                <h1 style="font-size: 1.5rem; font-weight: 800; letter-spacing: -0.03em;">🎯 TAMBOLA LIVE LOUNGE</h1>
+                <p style="font-size: 0.8rem; color: var(--text-muted);">In-Memory Live Simulation Sandbox</p>
+            </div>
+            <div class="badge">🟢 Online Players: <span id="onlineCounter">0</span></div>
+        </header>
+
+        <div class="grid-layout">
+            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                
+                <div class="card">
+                    <h3>💰 Secure Personal Ledger</h3>
+                    <div class="metrics-row">
+                        <div class="metric-box" style="border-left: 4px solid var(--accent-success);">
+                            <div class="metric-label">Wallet Cash</div>
+                            <div class="metric-val" id="walletDisplay">₹0.00</div>
+                        </div>
+                        <div class="metric-box" style="border-left: 4px solid var(--primary);">
+                            <div class="metric-label">Game Tokens</div>
+                            <div class="metric-val" id="tokensDisplay">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>🎟️ Deposit Funds for Tokens</h3>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">
+                        Submit payment transactions. Approvals immediately convert 1:1 into playable platform tokens.
+                    </p>
+                    <div class="form-group">
+                        <label>Deposit Value Amount (INR)</label>
+                        <input type="number" id="depositAmount" min="10" placeholder="Minimum ₹10">
+                    </div>
+                    <div class="form-group">
+                        <label>Unique Bank UTR / Trans ID</label>
+                        <input type="text" id="depositUtr" placeholder="12 Digit Transaction Number">
+                    </div>
+                    <button class="btn btn-success" onclick="triggerDepositRequest()">Submit Transaction Request</button>
+                </div>
+            </div>
+
+            <div class="card chat-container">
+                <h3>💬 Global Room Chat Logs</h3>
+                <div class="chat-logs" id="chatLogsArea"></div>
+                <div class="chat-input-wrapper">
+                    <input type="text" id="chatMessageField" placeholder="Type lounge chat message..." maxlength="120">
+                    <button class="btn btn-primary" onclick="submitUserChatMessage()">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="client.js"></script>
+</body>
+</html>
+
