@@ -3,87 +3,110 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tambola Elite Lounge Live</title>
+    <title>Tambola Live Pro - Player Lounge</title>
     <link rel="stylesheet" href="style.css">
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        /* Sticky Video Player Arena */
-        .video-wrapper { width: 100%; background: #000; border-bottom: 3px solid var(--primary); position: sticky; top: 0; z-index: 999; }
-        .video-container { max-width: 800px; margin: 0 auto; aspect-ratio: 16/9; width: 100%; }
-        .video-container iframe { width: 100%; height: 100%; border: none; }
-        .audio-hint { background: #ffb020; color: #000; text-align: center; font-size: 0.8rem; font-weight: bold; padding: 4px 0; }
+        .timer-banner {
+            background: linear-gradient(135deg, #1e1b4b, #311042);
+            border: 2px solid var(--primary);
+            padding: 1.2rem;
+            border-radius: 16px;
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
+        }
+        #timerClock { color: var(--accent-danger); font-size: 1.8rem; }
         
-        .live-panel { background: var(--bg-surface); border: 1px solid var(--border-color); padding: 15px; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; }
-        .ball { width: 60px; height: 60px; background: radial-gradient(circle at 30% 30%, #ffb020, #d97706); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; font-weight: bold; color: #fff; box-shadow: 0 4px 15px rgba(217,119,6,0.4); }
-        .countdown-alert { display:none; background: rgba(244, 63, 94, 0.12); color: #fca5a5; padding: 0.6rem; border-radius: 10px; text-align:center; font-weight: 700; border: 1px solid rgba(244, 63, 94, 0.2); margin-bottom: 1rem;}
+        .live-display-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 2rem;
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+        .live-ball {
+            width: 90px;
+            height: 90px;
+            background: radial-gradient(circle at 30% 30%, #ffb020, #d97706);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.8rem;
+            font-weight: 900;
+            color: #fff;
+            margin: 1rem auto 0;
+            box-shadow: 0 8px 25px rgba(217,119,6,0.5);
+        }
 
-        /* Tickets Matrix Grid layout */
-        .tickets-container { display: grid; grid-template-columns: 1fr; gap: 1.2rem; margin-top: 1rem;}
-        @media (min-width: 700px) { .tickets-container { grid-template-columns: repeat(2, 1fr); } }
-        .ticket-box { background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 14px; padding: 1rem; }
+        .tickets-container { display: grid; grid-template-columns: 1fr; gap: 1.5rem; margin-top: 1.5rem; }
+        @media (min-width: 768px) { .tickets-container { grid-template-columns: repeat(2, 1fr); } }
+        
+        .ticket-box { background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 14px; padding: 1.2rem; }
         .ticket-grid { display: grid; grid-template-columns: repeat(9, 1fr); background: var(--border-color); gap: 1px; border-radius: 8px; overflow: hidden; }
-        .ticket-cell { background: #111c30; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; font-weight: 800; color: #fff; position: relative; }
-        .ticket-cell.empty { background: rgba(15, 23, 42, 0.4); }
+        .ticket-cell { background: #111c30; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: 800; color: #fff; position: relative; }
+        .ticket-cell.empty { background: rgba(15, 23, 42, 0.5); }
         .ticket-cell.struck { color: #475569 !important; background-color: #1a253c !important; }
-        .ticket-cell.struck::after { content: ''; position: absolute; width: 85%; height: 2px; background: var(--accent-danger); transform: rotate(-35deg); }
+        .ticket-cell.struck::after { content: ''; position: absolute; width: 90%; height: 3px; background: var(--accent-danger); transform: rotate(-30deg); }
     </style>
 </head>
-<body style="display: block;">
+<body>
 
     <div class="auth-container" id="authGate">
         <div class="auth-card">
-            <h2>Live Lounge Terminal</h2>
-            <p>Establish your unique handle name to join.</p>
+            <h2>Housie Player Entry</h2>
+            <p>Enter your username to connect to the game live.</p>
             <div class="form-group">
-                <label>Desired Nickname</label>
-                <input type="text" id="nicknameInput" placeholder="e.g. Ropu">
+                <label>Nickname</label>
+                <input type="text" id="nicknameInput" placeholder="Enter name here...">
             </div>
-            <button class="btn btn-primary" onclick="processUserAuth()">Enter Lounge</button>
+            <button class="btn btn-primary" onclick="processUserAuth()">Join Room</button>
         </div>
     </div>
 
-    <div class="video-wrapper">
-        <div class="audio-hint">🔈 Tip: If video is silent, tap inside video player to Unmute!</div>
-        <div class="video-container">
-            <iframe id="livePlayer" src="https://www.youtube.com/embed/4d_a_N_Wsiw?autoplay=1&mute=1&rel=0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-        </div>
-    </div>
-
-    <div class="app-container" id="mainAppLayout" style="max-width: 800px; padding: 1rem; margin-top: 10px;">
+    <div class="app-container" id="mainAppLayout" style="max-width: 900px;">
         
-        <div class="countdown-alert" id="timerAlert">📢 NEXT ROUND REGISTRATION WINDOW OPEN: <span id="timerClock">60</span>s</div>
-
-        <div class="live-panel">
-            <div>
-                <h3 id="statusContext" style="color: #10b981;">🟢 LIVE STREAM CONTEXT ACTIVE</h3>
-                <p style="font-size: 0.8rem; color: var(--text-muted);">Numbers will automatically strike upon admin draw.</p>
-            </div>
-            <div class="ball" id="userBallDisplay">-</div>
+        <div class="timer-banner">
+            ⏳ NEXT ROUND STARTS IN: <span id="timerClock">00:60</span>
         </div>
 
         <div class="grid-layout" style="grid-template-columns: 1fr;">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                <div class="card">
-                    <h4 style="font-size:0.9rem; color:var(--text-muted)">🪙 TOKENS VAULT</h4>
-                    <div class="metric-val" id="tokensDisplay" style="font-size: 1.8rem; font-weight: 900;">0</div>
+            
+            <div class="live-display-card">
+                <h3 style="color: var(--accent-success); font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px;">📢 LIVE BOARD STREAMING</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted);">Numbers drawn by Admin will auto-strike below instantly.</p>
+                <div class="live-ball" id="userBallDisplay">-</div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: center;">
+                <div class="card" style="padding: 1rem 1.5rem;">
+                    <span style="font-size:0.8rem; color:var(--text-muted); text-transform: uppercase;">Available Tokens</span>
+                    <div class="metric-val" id="tokensDisplay" style="font-size: 2rem; margin: 0;">0</div>
                 </div>
-                <div class="card" id="shopArea">
-                    <button class="btn btn-primary" onclick="procureTickets()">🎟️ Procure 4 Tickets (Cost: 40)</button>
+                <div id="shopArea">
+                    <button class="btn btn-success" style="padding: 1rem;" onclick="procureTickets()">🎟️ Generate 4 Game Tickets</button>
                 </div>
             </div>
 
-            <div id="ticketsSection" style="display: none; margin-top: 10px;">
-                <h3 style="font-size:1.1rem; border-left: 4px solid var(--primary); padding-left: 5px;">Your Active Game Cards</h3>
+            <div id="ticketsSection" style="display: none;">
+                <h3 style="font-size: 1.3rem; margin-bottom: 0.5rem;">🎯 Your Game Tickets</h3>
                 <div class="tickets-container" id="ticketsWrapper"></div>
             </div>
 
-            <div class="card chat-container" style="height: 250px; margin-top: 10px;">
-                <div class="chat-logs" id="chatLogsArea" style="height: 180px;"></div>
+            <div class="card chat-container" style="height: 300px; margin-top: 1rem;">
+                <h3>💬 Global Lounge Chat</h3>
+                <div class="chat-logs" id="chatLogsArea" style="height: 200px;"></div>
                 <div class="chat-input-wrapper">
-                    <input type="text" id="chatMessageField" placeholder="Type lounge chat...">
+                    <input type="text" id="chatMessageField" placeholder="Send message...">
                     <button class="btn btn-primary" onclick="submitUserChatMessage()">Send</button>
                 </div>
             </div>
+
         </div>
     </div>
 
@@ -93,7 +116,7 @@
 
         function processUserAuth() {
             const name = document.getElementById('nicknameInput').value.trim();
-            if(!name) return alert("Enter nickname.");
+            if(!name) return alert("Please type a nickname.");
             socket.emit('joinGame', name);
         }
 
@@ -107,22 +130,14 @@
             document.getElementById('tokensDisplay').textContent = data.tokens;
         });
 
-        // ⏳ Real-time Countdown sync from backend
-        let localCountdown;
+        // ⏳ Sync Real-time Live Countdown directly from master server loop
         socket.on('syncTimer', (timeLeft) => {
-            const alertBox = document.getElementById('timerAlert');
             const clock = document.getElementById('timerClock');
-            alertBox.style.display = 'block';
-            clock.textContent = timeLeft;
-            
-            if(timeLeft <= 0) {
-                alertBox.style.display = 'none';
-                document.getElementById('statusContext').textContent = "🔴 GAME IN PROGRESS";
-                document.getElementById('statusContext').style.color = "var(--accent-danger)";
-            }
+            let seconds = timeLeft < 10 ? '0' + timeLeft : timeLeft;
+            clock.textContent = `00:${seconds}`;
         });
 
-        // ⚡ Admin clicked a number listener
+        // ⚡ Socket sync: Admin clicked a number draw execution
         socket.on('gameUpdate', (state) => {
             document.getElementById('userBallDisplay').textContent = state.latestBall;
             if(state.calledNumbers.length === 0) {
@@ -139,13 +154,14 @@
             wrapper.innerHTML = '';
             myGeneratedTickets = [];
 
+            // Generate 4 separate random grids
             for(let t=0; t<4; t++) {
                 let matrix = generateValidMatrix();
                 myGeneratedTickets.push(matrix);
                 
                 let box = document.createElement('div');
                 box.className = 'ticket-box';
-                let html = `<div style="font-size:0.8rem; margin-bottom:5px; color:var(--text-muted)">Card #${t+1}</div><div class="ticket-grid">`;
+                let html = `<div style="font-size:0.85rem; margin-bottom:8px; color:var(--text-muted); font-weight:700;">TICKET CARD #${t+1}</div><div class="ticket-grid">`;
                 
                 for(let r=0; r<3; r++) {
                     for(let c=0; c<9; c++) {
@@ -177,12 +193,11 @@
         function resetAllTicketStrikes() {
             document.querySelectorAll('.ticket-cell').forEach(cell => cell.classList.remove('struck'));
             document.getElementById('userBallDisplay').textContent = '-';
-            document.getElementById('statusContext').textContent = "🟢 LIVE STREAM CONTEXT ACTIVE";
-            document.getElementById('statusContext').style.color = "#10b981";
             document.getElementById('shopArea').style.display = 'block';
+            document.getElementById('ticketsSection').style.display = 'none';
         }
 
-        // Chat logic sync
+        // Chat actions logic handles
         function submitUserChatMessage() {
             const f = document.getElementById('chatMessageField');
             if(!f.value.trim()) return;
@@ -200,6 +215,7 @@
             a.scrollTop = a.scrollHeight;
         });
 
+        // Perfect 15-number traditional algorithm standard logic matrix map
         function generateValidMatrix() {
             let ticket = Array.from({ length: 3 }, () => Array(9).fill(0));
             let pools = [[1,2,3,4,5,6,7,8,9], [10,11,12,13,14,15,16,17,18,19], [20,21,22,23,24,25,26,27,28,29], [30,31,32,33,34,35,36,37,38,39], [40,41,42,43,44,45,46,47,48,49], [50,51,52,53,54,55,56,57,58,59], [60,61,62,63,64,65,66,67,68,69], [70,71,72,73,74,75,76,77,78,79], [80,81,82,83,84,85,86,87,88,89,90]];
