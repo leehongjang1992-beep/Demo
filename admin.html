@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tambola Live Club - Admin Control Deck</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+
+    <div class="auth-container" id="adminAuthGate">
+        <div class="auth-card">
+            <h2>Admin Command Center</h2>
+            <p>Input system credentials to control operations.</p>
+            <div class="form-group">
+                <label>Master Password</label>
+                <input type="password" id="adminPassInput" placeholder="Password (Default: admin123)">
+            </div>
+            <button class="btn btn-danger" onclick="executeAdminAuth()">Gain Access Control</button>
+            <div id="authErrMsg" style="color:var(--accent-danger); font-size:0.85rem; margin-top:0.8rem; display:none;"></div>
+        </div>
+    </div>
+
+    <div class="app-container" id="adminMainLayout">
+        <header>
+            <div>
+                <h1 style="font-size: 1.5rem; color: var(--accent-danger); font-weight: 800;">🛠️ CLUB MASTER CONTROL DECK</h1>
+                <p style="font-size: 0.8rem; color: var(--text-muted);">Real-time Ledger & Chat Orchestration Environment</p>
+            </div>
+            <div class="badge" style="border-color: var(--accent-danger);">🛡️ Secure Terminal Active</div>
+        </header>
+
+        <div class="metrics-row" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 2rem;">
+            <div class="metric-box">
+                <div class="metric-label">Online Players</div>
+                <div class="metric-val" id="metricOnlineCount">0</div>
+            </div>
+            <div class="metric-box">
+                <div class="metric-label">Pending Verifications</div>
+                <div class="metric-val" id="metricPendingCount" style="color: var(--primary);">0</div>
+            </div>
+        </div>
+
+        <div class="grid-layout admin-grid" style="grid-template-columns: 1fr;">
+            
+            <div class="card">
+                <h3>💸 Incoming Ledger Verification Requests</h3>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Handle</th>
+                                <th>Value</th>
+                                <th>UTR/Trans ID</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="depositRequestsTableBody">
+                            <tr>
+                                <td colspan="5" style="text-align: center; color: var(--text-muted);">No transactions submitted yet.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card chat-container">
+                <h3>💬 Live Lounge Chat Audit Logs</h3>
+                <div class="chat-logs" id="adminChatLogsArea"></div>
+                <div class="chat-input-wrapper">
+                    <input type="text" id="adminChatMessageField" placeholder="Broadcast system announcement message..." maxlength="120">
+                    <button class="btn btn-danger" onclick="submitAdminChatMessage()">Broadcast</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>
+
