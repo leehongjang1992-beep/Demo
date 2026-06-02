@@ -1,52 +1,31 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tambola Live Pro - Player Lounge</title>
+    <title>Tambola Live Pro</title>
     <link rel="stylesheet" href="style.css">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         .timer-banner {
             background: linear-gradient(135deg, #1e1b4b, #311042);
-            border: 2px solid var(--primary);
-            padding: 1.2rem;
-            border-radius: 16px;
-            text-align: center;
-            font-size: 1.5rem;
-            font-weight: 800;
-            letter-spacing: 1px;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
+            border: 2px solid var(--primary); padding: 1.2rem; border-radius: 16px;
+            text-align: center; font-size: 1.4rem; font-weight: 800; margin-bottom: 1.5rem;
+            display: none; /* Initially Hidden */
         }
-        #timerClock { color: var(--accent-danger); font-size: 1.8rem; }
+        #timerClock { color: var(--accent-danger); font-size: 1.6rem; }
         
-        .live-display-card {
-            background: var(--bg-surface);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 2rem;
-            text-align: center;
-            margin-bottom: 1.5rem;
-        }
-        .live-ball {
-            width: 90px;
-            height: 90px;
-            background: radial-gradient(circle at 30% 30%, #ffb020, #d97706);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2.8rem;
-            font-weight: 900;
-            color: #fff;
-            margin: 1rem auto 0;
-            box-shadow: 0 8px 25px rgba(217,119,6,0.5);
-        }
+        .live-display-card { background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 16px; padding: 1.5rem; text-align: center; margin-bottom: 1.5rem; display: flex; justify-content: space-around; align-items: center; }
+        .live-ball { width: 90px; height: 90px; background: radial-gradient(circle at 30% 30%, #ffb020, #d97706); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.8rem; font-weight: 900; color: #fff; box-shadow: 0 8px 25px rgba(217,119,6,0.5); }
+        
+        /* Called history row sorting element style */
+        .history-strip { display: flex; gap: 8px; overflow-x: auto; padding: 10px; background: var(--bg-input); border-radius: 8px; min-height: 40px; margin-top: 10px; font-weight: 700; }
+        .history-item { background: var(--primary); color: #fff; padding: 5px 12px; border-radius: 20px; font-size: 1.1rem; flex-shrink: 0; }
+        .history-item:first-child { background: var(--accent-danger) !important; transform: scale(1.1); box-shadow: 0 0 8px var(--accent-danger); }
 
         .tickets-container { display: grid; grid-template-columns: 1fr; gap: 1.5rem; margin-top: 1.5rem; }
         @media (min-width: 768px) { .tickets-container { grid-template-columns: repeat(2, 1fr); } }
-        
         .ticket-box { background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 14px; padding: 1.2rem; }
         .ticket-grid { display: grid; grid-template-columns: repeat(9, 1fr); background: var(--border-color); gap: 1px; border-radius: 8px; overflow: hidden; }
         .ticket-cell { background: #111c30; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: 800; color: #fff; position: relative; }
@@ -60,7 +39,6 @@
     <div class="auth-container" id="authGate">
         <div class="auth-card">
             <h2>Housie Player Entry</h2>
-            <p>Enter your username to connect to the game live.</p>
             <div class="form-group">
                 <label>Nickname</label>
                 <input type="text" id="nicknameInput" placeholder="Enter name here...">
@@ -69,41 +47,44 @@
         </div>
     </div>
 
-    <div class="app-container" id="mainAppLayout" style="max-width: 900px;">
+    <div class="app-container" id="mainAppLayout" style="max-width: 900px; display: none;">
         
-        <div class="timer-banner">
-            ⏳ NEXT ROUND STARTS IN: <span id="timerClock">00:60</span>
+        <!-- Registration Clock Window -->
+        <div class="timer-banner" id="registrationClockBanner">
+            ⏳ REGISTRATION WINDOW OPEN: <span id="timerClock">00:60</span>
         </div>
 
         <div class="grid-layout" style="grid-template-columns: 1fr;">
             
             <div class="live-display-card">
-                <h3 style="color: var(--accent-success); font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px;">📢 LIVE BOARD STREAMING</h3>
-                <p style="font-size: 0.85rem; color: var(--text-muted);">Numbers drawn by Admin will auto-strike below instantly.</p>
+                <div>
+                    <h3 id="statusContextLabel" style="color: var(--accent-success); font-size: 1.1rem; text-transform: uppercase;">🟢 WAITING FOR ROUND</h3>
+                    <div class="history-strip" id="numbersHistoryLog"></div>
+                </div>
                 <div class="live-ball" id="userBallDisplay">-</div>
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: center;">
                 <div class="card" style="padding: 1rem 1.5rem;">
-                    <span style="font-size:0.8rem; color:var(--text-muted); text-transform: uppercase;">Available Tokens</span>
+                    <span>Available Tokens</span>
                     <div class="metric-val" id="tokensDisplay" style="font-size: 2rem; margin: 0;">0</div>
                 </div>
                 <div id="shopArea">
-                    <button class="btn btn-success" style="padding: 1rem;" onclick="procureTickets()">🎟️ Generate 4 Game Tickets</button>
+                    <button class="btn btn-success" style="padding: 1rem; width:100%;" onclick="procureTickets()">🎟️ Procure 4 Tickets</button>
                 </div>
             </div>
 
             <div id="ticketsSection" style="display: none;">
-                <h3 style="font-size: 1.3rem; margin-bottom: 0.5rem;">🎯 Your Game Tickets</h3>
+                <h3>🎯 Your Active Game Cards</h3>
                 <div class="tickets-container" id="ticketsWrapper"></div>
             </div>
 
             <div class="card chat-container" style="height: 300px; margin-top: 1rem;">
                 <h3>💬 Global Lounge Chat</h3>
-                <div class="chat-logs" id="chatLogsArea" style="height: 200px;"></div>
+                <div class="chat-logs" id="chatLogsArea" style="height: 180px;"></div>
                 <div class="chat-input-wrapper">
-                    <input type="text" id="chatMessageField" placeholder="Send message...">
-                    <button class="btn btn-primary" onclick="submitUserChatMessage()">Send</button>
+                    <input type="text" id="chatMessageField" placeholder="Type lounge chat message...">
+                    <button class="btn btn-primary" id="chatSendBtn" onclick="submitUserChatMessage()">Send</button>
                 </div>
             </div>
 
@@ -113,6 +94,7 @@
     <script>
         const socket = io();
         let myGeneratedTickets = [];
+        let lastSpokenNumber = null;
 
         function processUserAuth() {
             const name = document.getElementById('nicknameInput').value.trim();
@@ -130,22 +112,65 @@
             document.getElementById('tokensDisplay').textContent = data.tokens;
         });
 
-        // ⏳ Sync Real-time Live Countdown directly from master server loop
         socket.on('syncTimer', (timeLeft) => {
+            const banner = document.getElementById('registrationClockBanner');
             const clock = document.getElementById('timerClock');
+            banner.style.display = "block";
             let seconds = timeLeft < 10 ? '0' + timeLeft : timeLeft;
             clock.textContent = `00:${seconds}`;
         });
 
-        // ⚡ Socket sync: Admin clicked a number draw execution
         socket.on('gameUpdate', (state) => {
             document.getElementById('userBallDisplay').textContent = state.latestBall;
+            
+            // Timer state cleanup control triggers
+            if(!state.timerActive) {
+                document.getElementById('registrationClockBanner').style.display = "none";
+            }
+
+            // Sync structural contextual alerts
+            const statusLabel = document.getElementById('statusContextLabel');
+            if(state.gameStatus === "REGISTRATION") {
+                statusLabel.textContent = "⏳ REGISTRATION ACTIVE - BUY TICKETS NOW";
+                statusLabel.style.color = "#ffb020";
+            } else if(state.gameStatus === "STARTED") {
+                statusLabel.textContent = "🔴 GAME IN PROGRESS";
+                statusLabel.style.color = "var(--accent-danger)";
+            } else {
+                statusLabel.textContent = "🟢 WAITING FOR ADMIN TO START";
+                statusLabel.style.color = "#10b981";
+            }
+
+            // Text-to-speech audio trigger on new number confirmation
+            if(state.latestBall !== "-" && state.latestBall !== lastSpokenNumber) {
+                lastSpokenNumber = state.latestBall;
+                triggerVoiceSpeech("Number " + state.latestBall);
+            }
+
+            // History Strip Rendering Engine (Latest always first)
+            const historyArea = document.getElementById('numbersHistoryLog');
+            historyArea.innerHTML = '';
+            state.calledNumbers.forEach(n => {
+                historyArea.innerHTML += `<div class="history-item">${n}</div>`;
+            });
+
             if(state.calledNumbers.length === 0) {
                 resetAllTicketStrikes();
+                lastSpokenNumber = null;
             } else {
                 autoStrikeTickets(state.calledNumbers);
             }
         });
+
+        // 🔊 Audio voice synthesis implementation routine
+        function triggerVoiceSpeech(textToSay) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); // Stop old queued audio strings
+                let utterance = new SpeechSynthesisUtterance(textToSay);
+                utterance.rate = 0.9; 
+                window.speechSynthesis.speak(utterance);
+            }
+        }
 
         function procureTickets() {
             document.getElementById('shopArea').style.display = 'none';
@@ -154,14 +179,13 @@
             wrapper.innerHTML = '';
             myGeneratedTickets = [];
 
-            // Generate 4 separate random grids
             for(let t=0; t<4; t++) {
                 let matrix = generateValidMatrix();
                 myGeneratedTickets.push(matrix);
                 
                 let box = document.createElement('div');
                 box.className = 'ticket-box';
-                let html = `<div style="font-size:0.85rem; margin-bottom:8px; color:var(--text-muted); font-weight:700;">TICKET CARD #${t+1}</div><div class="ticket-grid">`;
+                let html = `<div style="font-size:0.85rem; margin-bottom:8px; color:var(--text-muted);">CARD #${t+1}</div><div class="ticket-grid">`;
                 
                 for(let r=0; r<3; r++) {
                     for(let c=0; c<9; c++) {
@@ -197,25 +221,27 @@
             document.getElementById('ticketsSection').style.display = 'none';
         }
 
-        // Chat actions logic handles
+        // 💬 Fixed User Messaging input handler sync routine
         function submitUserChatMessage() {
             const f = document.getElementById('chatMessageField');
-            if(!f.value.trim()) return;
-            socket.emit('sendMessage', f.value.trim());
+            const msg = f.value.trim();
+            if(!msg) return;
+            socket.emit('sendMessage', msg);
             f.value = '';
         }
+
         socket.on('chatHistory', (h) => {
             const a = document.getElementById('chatLogsArea'); a.innerHTML = '';
             h.forEach(m => a.innerHTML += `<div class="chat-msg"><span class="author">${m.sender}:</span> ${m.text}</div>`);
             a.scrollTop = a.scrollHeight;
         });
+
         socket.on('receiveMessage', (m) => {
             const a = document.getElementById('chatLogsArea');
             a.innerHTML += `<div class="chat-msg"><span class="author">${m.sender}:</span> ${m.text}</div>`;
             a.scrollTop = a.scrollHeight;
         });
 
-        // Perfect 15-number traditional algorithm standard logic matrix map
         function generateValidMatrix() {
             let ticket = Array.from({ length: 3 }, () => Array(9).fill(0));
             let pools = [[1,2,3,4,5,6,7,8,9], [10,11,12,13,14,15,16,17,18,19], [20,21,22,23,24,25,26,27,28,29], [30,31,32,33,34,35,36,37,38,39], [40,41,42,43,44,45,46,47,48,49], [50,51,52,53,54,55,56,57,58,59], [60,61,62,63,64,65,66,67,68,69], [70,71,72,73,74,75,76,77,78,79], [80,81,82,83,84,85,86,87,88,89,90]];
