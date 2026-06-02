@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tambola Control Console - Game Master</title>
+    <title>Tambola Control Console</title>
     <link rel="stylesheet" href="style.css">
     <script src="/socket.io/socket.io.js"></script>
     <style>
@@ -35,24 +35,30 @@
     <div class="app-container" id="adminMainLayout" style="display:none; max-width: 950px;">
         <header>
             <div>
-                <h1 style="font-size: 1.5rem; color: var(--accent-danger); font-weight: 800;">🛠️ HOUSIE GAME CONTROL INTERFACE</h1>
-                <p style="font-size: 0.8rem; color: var(--text-muted);">Tap any number box grid space to publish that value instantly live</p>
+                <h1 style="font-size: 1.5rem; color: var(--accent-danger); font-weight: 800;">🎙️ HOUSIE CONTROL DESK</h1>
+                <p style="font-size: 0.8rem; color: var(--text-muted);">Double click configuration security layer enabled</p>
             </div>
-            <button class="btn btn-danger" style="width: auto; padding: 6px 15px;" onclick="triggerReset()">🔄 Wipe Board Reset</button>
+            <div style="display:flex; gap:10px;">
+                <button class="btn btn-primary" style="width: auto;" onclick="socket.emit('startRegistrationWindow')">⏳ Start 1 Min Entry</button>
+                <button class="btn btn-danger" style="width: auto;" onclick="triggerReset()">🔄 Wipe Game</button>
+            </div>
         </header>
 
         <div class="grid-layout" style="grid-template-columns: 1.6fr 1fr;">
             <div>
                 <div class="master-display">
                     <div>
-                        <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Active Drawn Ball</span>
+                        <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Current Ball Status</span>
                         <div id="currentBallDisplay" style="font-size: 3.5rem; font-weight: 900; color: #ffb020;">-</div>
                     </div>
-                    <div class="badge" style="border-color: var(--accent-success); font-size:1rem; padding:10px;">🟢 Live Connected</div>
+                    <div>
+                        <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Game Engine Status</span>
+                        <div id="engineStatusLabel" style="font-size: 1.2rem; font-weight: 800; color: var(--accent-success);">WAITING</div>
+                    </div>
                 </div>
 
                 <div class="card">
-                    <h3>🔢 Master 1-90 Draw Selection Sheet</h3>
+                    <h3>🔢 Master 1-90 Grid (Asks Confirmation on Click)</h3>
                     <div class="board-grid" id="mainAdminBoard"></div>
                 </div>
             </div>
@@ -61,7 +67,7 @@
                 <h3>💬 Live Lounge Chat Audit System</h3>
                 <div class="chat-logs" id="adminChatLogsArea" style="flex-grow:1; height:350px;"></div>
                 <div class="chat-input-wrapper">
-                    <input type="text" id="adminChatMessageField" placeholder="Broadcast notification message...">
+                    <input type="text" id="adminChatMessageField" placeholder="Broadcast notification...">
                     <button class="btn btn-danger" onclick="submitAdminChatMessage()">Send</button>
                 </div>
             </div>
@@ -95,19 +101,28 @@
                 cell.className = 'board-cell';
                 cell.id = `admin-num-${i}`;
                 cell.textContent = i;
-                cell.onclick = () => socket.emit('newNumber', i);
+                cell.onclick = () => confirmAndSend(i);
                 grid.appendChild(cell);
             }
         }
 
+        // 🛡️ Security Gate confirmation system to prevent misclick
+        function confirmAndSend(num) {
+            let confirmation = confirm(`Kya aap sach me Number ${num} ko live announcement board par bhejna chahte hain?`);
+            if (confirmation) {
+                socket.emit('newNumber', num);
+            }
+        }
+
         function triggerReset() {
-            if(confirm("Wipe entire board status? All player cards will clean strikes.")) {
+            if(confirm("Puray board data reset karein?")) {
                 socket.emit('resetGame');
             }
         }
 
         socket.on('adminDashboardUpdate', (data) => {
             document.getElementById('currentBallDisplay').textContent = data.latestBall;
+            document.getElementById('engineStatusLabel').textContent = data.gameStatus;
             
             for(let i = 1; i <= 90; i++) {
                 const cell = document.getElementById(`admin-num-${i}`);
