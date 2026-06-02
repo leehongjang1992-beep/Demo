@@ -1,28 +1,19 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tambola Live Pro</title>
+    <title>Tambola Lounge</title>
     <link rel="stylesheet" href="style.css">
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        .timer-banner {
-            background: linear-gradient(135deg, #1e1b4b, #311042);
-            border: 2px solid var(--primary); padding: 1.2rem; border-radius: 16px;
-            text-align: center; font-size: 1.4rem; font-weight: 800; margin-bottom: 1.5rem;
-            display: none; /* Initially Hidden */
-        }
-        #timerClock { color: var(--accent-danger); font-size: 1.6rem; }
-        
-        .live-display-card { background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 16px; padding: 1.5rem; text-align: center; margin-bottom: 1.5rem; display: flex; justify-content: space-around; align-items: center; }
+        .timer-banner { background: linear-gradient(135deg, #1e1b4b, #311042); padding: 1.2rem; border-radius: 16px; text-align: center; font-size: 1.4rem; font-weight: 800; display: none; }
+        .live-display-card { background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 16px; padding: 1.5rem; text-align: center; display: flex; justify-content: space-around; align-items: center; margin-bottom: 1rem; }
         .live-ball { width: 90px; height: 90px; background: radial-gradient(circle at 30% 30%, #ffb020, #d97706); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.8rem; font-weight: 900; color: #fff; box-shadow: 0 8px 25px rgba(217,119,6,0.5); }
-        
-        /* Called history row sorting element style */
-        .history-strip { display: flex; gap: 8px; overflow-x: auto; padding: 10px; background: var(--bg-input); border-radius: 8px; min-height: 40px; margin-top: 10px; font-weight: 700; }
-        .history-item { background: var(--primary); color: #fff; padding: 5px 12px; border-radius: 20px; font-size: 1.1rem; flex-shrink: 0; }
-        .history-item:first-child { background: var(--accent-danger) !important; transform: scale(1.1); box-shadow: 0 0 8px var(--accent-danger); }
+        .history-strip { display: flex; gap: 8px; overflow-x: auto; padding: 10px; background: var(--bg-input); border-radius: 8px; min-height: 40px; }
+        .history-item { background: var(--primary); color: #fff; padding: 5px 12px; border-radius: 20px; font-weight: bold; }
+        /* Highlighting latest drawn number first */
+        .history-item:first-child { background: var(--accent-danger) !important; transform: scale(1.1); }
 
         .tickets-container { display: grid; grid-template-columns: 1fr; gap: 1.5rem; margin-top: 1.5rem; }
         @media (min-width: 768px) { .tickets-container { grid-template-columns: repeat(2, 1fr); } }
@@ -32,16 +23,25 @@
         .ticket-cell.empty { background: rgba(15, 23, 42, 0.5); }
         .ticket-cell.struck { color: #475569 !important; background-color: #1a253c !important; }
         .ticket-cell.struck::after { content: ''; position: absolute; width: 90%; height: 3px; background: var(--accent-danger); transform: rotate(-30deg); }
+        
+        /* Premium SMS/Victory Popup styles */
+        .win-popup { display:none; position: fixed; top: 20%; left: 50%; transform: translate(-50%, -50%); background: linear-gradient(135deg, #ef4444, #b91c1c); color: white; padding: 2rem; border-radius: 20px; box-shadow: 0 0 50px rgba(0,0,0,0.8); z-index: 10000; text-align: center; font-weight: 900; animation: bounce 0.5s ease-out; width: 80%; max-width: 400px; border: 3px solid #fff; }
+        @keyframes bounce { 0% { transform: translate(-50%, -100%) scale(0.5); } 70% { transform: translate(-50%, -48%) scale(1.05); } 100% { transform: translate(-50%, -50%) scale(1); } }
     </style>
 </head>
 <body>
+
+    <div id="victoryPopupBox" class="win-popup">
+        <h2 style="font-size: 2rem; margin: 0;">🏆 WINNER ALARM 🏆</h2>
+        <p id="victoryBodyContent" style="font-size: 1.3rem; margin: 15px 0;"></p>
+        <button class="btn" style="background:#fff; color:#000; font-weight:bold; width:auto;" onclick="document.getElementById('victoryPopupBox').style.display='none'">Dismiss</button>
+    </div>
 
     <div class="auth-container" id="authGate">
         <div class="auth-card">
             <h2>Housie Player Entry</h2>
             <div class="form-group">
-                <label>Nickname</label>
-                <input type="text" id="nicknameInput" placeholder="Enter name here...">
+                <input type="text" id="nicknameInput" placeholder="Enter name...">
             </div>
             <button class="btn btn-primary" onclick="processUserAuth()">Join Room</button>
         </div>
@@ -49,29 +49,26 @@
 
     <div class="app-container" id="mainAppLayout" style="max-width: 900px; display: none;">
         
-        <!-- Registration Clock Window -->
         <div class="timer-banner" id="registrationClockBanner">
-            ⏳ REGISTRATION WINDOW OPEN: <span id="timerClock">00:60</span>
+            ⏳ REGISTRATION OPEN: <span id="timerClock">00:60</span>
         </div>
 
         <div class="grid-layout" style="grid-template-columns: 1fr;">
             
             <div class="live-display-card">
                 <div>
-                    <h3 id="statusContextLabel" style="color: var(--accent-success); font-size: 1.1rem; text-transform: uppercase;">🟢 WAITING FOR ROUND</h3>
+                    <h3 id="statusContextLabel" style="color: var(--accent-success);">🟢 WAITING</h3>
                     <div class="history-strip" id="numbersHistoryLog"></div>
                 </div>
                 <div class="live-ball" id="userBallDisplay">-</div>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: center;">
-                <div class="card" style="padding: 1rem 1.5rem;">
-                    <span>Available Tokens</span>
-                    <div class="metric-val" id="tokensDisplay" style="font-size: 2rem; margin: 0;">0</div>
+            <div class="card" id="shopArea" style="display:flex; justify-content:space-between; align-items:center; gap:15px; padding:1.5rem;">
+                <div>
+                    <label style="font-weight:bold; font-size:0.9rem;">How many tickets do you want?</label>
+                    <input type="number" id="ticketQuantityInput" value="4" min="1" max="12" style="width:70px; text-align:center; margin-top:5px; font-size:1.1rem;">
                 </div>
-                <div id="shopArea">
-                    <button class="btn btn-success" style="padding: 1rem; width:100%;" onclick="procureTickets()">🎟️ Procure 4 Tickets</button>
-                </div>
+                <button class="btn btn-success" style="width:200px; padding:15px;" onclick="procureTickets()">🎟️ Generate Tickets</button>
             </div>
 
             <div id="ticketsSection" style="display: none;">
@@ -79,114 +76,93 @@
                 <div class="tickets-container" id="ticketsWrapper"></div>
             </div>
 
-            <div class="card chat-container" style="height: 300px; margin-top: 1rem;">
-                <h3>💬 Global Lounge Chat</h3>
+            <div class="card chat-container" style="height: 300px;">
+                <h3>💬 Lounge Chat</h3>
                 <div class="chat-logs" id="chatLogsArea" style="height: 180px;"></div>
                 <div class="chat-input-wrapper">
-                    <input type="text" id="chatMessageField" placeholder="Type lounge chat message...">
-                    <button class="btn btn-primary" id="chatSendBtn" onclick="submitUserChatMessage()">Send</button>
+                    <input type="text" id="chatMessageField" placeholder="Type chat...">
+                    <button class="btn btn-primary" onclick="submitUserChatMessage()">Send</button>
                 </div>
             </div>
-
         </div>
     </div>
 
     <script>
         const socket = io();
+        let myUsername = "";
         let myGeneratedTickets = [];
         let lastSpokenNumber = null;
 
+        // Win Tracks to prevent redundant trigger sends
+        let milestoneClaims = { earlyFive: false, middleLine: false, fullHouse: false };
+
         function processUserAuth() {
             const name = document.getElementById('nicknameInput').value.trim();
-            if(!name) return alert("Please type a nickname.");
+            if(!name) return alert("Type name.");
+            myUsername = name;
             socket.emit('joinGame', name);
         }
 
         socket.on('initUser', (user) => {
             document.getElementById('authGate').style.display = 'none';
             document.getElementById('mainAppLayout').style.display = 'block';
-            document.getElementById('tokensDisplay').textContent = user.tokens;
-        });
-
-        socket.on('updateBalances', (data) => {
-            document.getElementById('tokensDisplay').textContent = data.tokens;
         });
 
         socket.on('syncTimer', (timeLeft) => {
             const banner = document.getElementById('registrationClockBanner');
-            const clock = document.getElementById('timerClock');
             banner.style.display = "block";
-            let seconds = timeLeft < 10 ? '0' + timeLeft : timeLeft;
-            clock.textContent = `00:${seconds}`;
+            document.getElementById('timerClock').textContent = `00:${timeLeft < 10 ? '0'+timeLeft : timeLeft}`;
         });
 
         socket.on('gameUpdate', (state) => {
             document.getElementById('userBallDisplay').textContent = state.latestBall;
-            
-            // Timer state cleanup control triggers
-            if(!state.timerActive) {
-                document.getElementById('registrationClockBanner').style.display = "none";
-            }
+            if(!state.timerActive) document.getElementById('registrationClockBanner').style.display = "none";
 
-            // Sync structural contextual alerts
             const statusLabel = document.getElementById('statusContextLabel');
-            if(state.gameStatus === "REGISTRATION") {
-                statusLabel.textContent = "⏳ REGISTRATION ACTIVE - BUY TICKETS NOW";
-                statusLabel.style.color = "#ffb020";
-            } else if(state.gameStatus === "STARTED") {
-                statusLabel.textContent = "🔴 GAME IN PROGRESS";
-                statusLabel.style.color = "var(--accent-danger)";
-            } else {
-                statusLabel.textContent = "🟢 WAITING FOR ADMIN TO START";
-                statusLabel.style.color = "#10b981";
-            }
+            if(state.gameStatus === "REGISTRATION") statusLabel.textContent = "⏳ REGISTRATION ACTIVE";
+            else if(state.gameStatus === "STARTED") statusLabel.textContent = "🔴 GAME IN PROGRESS";
+            else statusLabel.textContent = "🟢 WAITING";
 
-            // Text-to-speech audio trigger on new number confirmation
             if(state.latestBall !== "-" && state.latestBall !== lastSpokenNumber) {
                 lastSpokenNumber = state.latestBall;
-                triggerVoiceSpeech("Number " + state.latestBall);
+                if ('speechSynthesis' in window) {
+                    window.speechSynthesis.cancel();
+                    window.speechSynthesis.speak(new SpeechSynthesisUtterance("Number " + state.latestBall));
+                }
             }
 
-            // History Strip Rendering Engine (Latest always first)
             const historyArea = document.getElementById('numbersHistoryLog');
             historyArea.innerHTML = '';
-            state.calledNumbers.forEach(n => {
-                historyArea.innerHTML += `<div class="history-item">${n}</div>`;
-            });
+            state.calledNumbers.forEach(n => historyArea.innerHTML += `<div class="history-item">${n}</div>`);
 
             if(state.calledNumbers.length === 0) {
                 resetAllTicketStrikes();
-                lastSpokenNumber = null;
             } else {
-                autoStrikeTickets(state.calledNumbers);
+                autoStrikeAndCheckWins(state.calledNumbers);
             }
         });
 
-        // 🔊 Audio voice synthesis implementation routine
-        function triggerVoiceSpeech(textToSay) {
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel(); // Stop old queued audio strings
-                let utterance = new SpeechSynthesisUtterance(textToSay);
-                utterance.rate = 0.9; 
-                window.speechSynthesis.speak(utterance);
-            }
-        }
+        // 🏆 Victory SMS popup network broadcast listener
+        socket.on('victoryNotificationPopup', (data) => {
+            document.getElementById('victoryBodyContent').innerHTML = `🎉 <strong>${data.winner}</strong> has completed <strong>${data.claimType}</strong>!`;
+            document.getElementById('victoryPopupBox').style.display = 'block';
+        });
 
         function procureTickets() {
+            const qty = parseInt(document.getElementById('ticketQuantityInput').value) || 4;
             document.getElementById('shopArea').style.display = 'none';
             document.getElementById('ticketsSection').style.display = 'block';
             const wrapper = document.getElementById('ticketsWrapper');
             wrapper.innerHTML = '';
             myGeneratedTickets = [];
+            milestoneClaims = { earlyFive: false, middleLine: false, fullHouse: false };
 
-            for(let t=0; t<4; t++) {
+            for(let t=0; t<qty; t++) {
                 let matrix = generateValidMatrix();
                 myGeneratedTickets.push(matrix);
-                
                 let box = document.createElement('div');
                 box.className = 'ticket-box';
-                let html = `<div style="font-size:0.85rem; margin-bottom:8px; color:var(--text-muted);">CARD #${t+1}</div><div class="ticket-grid">`;
-                
+                let html = `<div style="font-size:0.85rem; margin-bottom:8px; color:var(--text-muted); font-weight:700;">TICKET #${t+1}</div><div class="ticket-grid">`;
                 for(let r=0; r<3; r++) {
                     for(let c=0; c<9; c++) {
                         let val = matrix[r][c];
@@ -194,48 +170,71 @@
                         else html += `<div class="ticket-cell" id="cell-${t}-${r}-${c}">${val}</div>`;
                     }
                 }
-                html += `</div>`;
-                box.innerHTML = html;
-                wrapper.appendChild(box);
+                html += `</div>`; box.innerHTML = html; wrapper.appendChild(box);
             }
         }
 
-        function autoStrikeTickets(calledNumbers) {
+        // Auto Strike + Automatic Milestone win auditor algorithm
+        function autoStrikeAndCheckWins(calledNumbers) {
+            let totalStruckInRound = 0;
+            
             myGeneratedTickets.forEach((matrix, t) => {
+                let ticketStruckCount = 0;
+                let middleRowStruckCount = 0;
+
                 for(let r=0; r<3; r++) {
                     for(let c=0; c<9; c++) {
                         let val = matrix[r][c];
-                        if(val !== 0 && calledNumbers.includes(val)) {
-                            const cell = document.getElementById(`cell-${t}-${r}-${c}`);
-                            if(cell) cell.classList.add('struck');
+                        if(val !== 0) {
+                            if(calledNumbers.includes(val)) {
+                                ticketStruckCount++;
+                                if(r === 1) middleRowStruckCount++; // Tracking index 1 (Middle line Row)
+                                const cell = document.getElementById(`cell-${t}-${r}-${c}`);
+                                if(cell) cell.classList.add('struck');
+                            }
                         }
                     }
                 }
+                totalStruckInRound += ticketStruckCount;
+
+                // 1. Middle Line Check (Must hit all 5 numbers inside index row 1)
+                if(middleRowStruckCount === 5 && !milestoneClaims.middleLine) {
+                    milestoneClaims.middleLine = true;
+                    socket.emit('claimWinEvent', { winner: myUsername, claimType: "MIDDLE LINE" });
+                }
+
+                // 2. Full House Check (All 15 numbers struck on a single sheet matrix)
+                if(ticketStruckCount === 15 && !milestoneClaims.fullHouse) {
+                    milestoneClaims.fullHouse = true;
+                    socket.emit('claimWinEvent', { winner: myUsername, claimType: "FULL HOUSE" });
+                }
             });
+
+            // 3. Early Five Check (Any 5 numbers crossed across any of their purchased ticket sheets)
+            if(totalStruckInRound >= 5 && !milestoneClaims.earlyFive) {
+                milestoneClaims.earlyFive = true;
+                socket.emit('claimWinEvent', { winner: myUsername, claimType: "EARLY FIVE" });
+            }
         }
 
         function resetAllTicketStrikes() {
             document.querySelectorAll('.ticket-cell').forEach(cell => cell.classList.remove('struck'));
             document.getElementById('userBallDisplay').textContent = '-';
-            document.getElementById('shopArea').style.display = 'block';
+            document.getElementById('shopArea').style.display = 'flex';
             document.getElementById('ticketsSection').style.display = 'none';
+            lastSpokenNumber = null;
         }
 
-        // 💬 Fixed User Messaging input handler sync routine
         function submitUserChatMessage() {
             const f = document.getElementById('chatMessageField');
-            const msg = f.value.trim();
-            if(!msg) return;
-            socket.emit('sendMessage', msg);
-            f.value = '';
+            if(!f.value.trim()) return;
+            socket.emit('sendMessage', f.value.trim()); f.value = '';
         }
-
         socket.on('chatHistory', (h) => {
             const a = document.getElementById('chatLogsArea'); a.innerHTML = '';
             h.forEach(m => a.innerHTML += `<div class="chat-msg"><span class="author">${m.sender}:</span> ${m.text}</div>`);
             a.scrollTop = a.scrollHeight;
         });
-
         socket.on('receiveMessage', (m) => {
             const a = document.getElementById('chatLogsArea');
             a.innerHTML += `<div class="chat-msg"><span class="author">${m.sender}:</span> ${m.text}</div>`;
