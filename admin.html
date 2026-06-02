@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tambola Master Control Board</title>
+    <title>Tambola Control Console - Game Master</title>
     <link rel="stylesheet" href="style.css">
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        .admin-box { max-width: 900px; margin: 2rem auto; padding: 1.5rem; }
         .board-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 8px; margin: 1.5rem 0; }
         .board-cell { 
             background: var(--bg-input); border: 1px solid var(--border-color); 
@@ -16,65 +15,54 @@
         }
         .board-cell:hover { border-color: var(--primary); transform: scale(1.05); }
         .board-cell.called { background: var(--accent-success); color: #000; box-shadow: 0 0 12px var(--accent-success); }
-        .display-panel { display: flex; justify-content: space-between; align-items: center; background: var(--bg-input); padding: 1rem; border-radius: 12px; margin-bottom: 1rem; }
-        .big-ball { font-size: 3.5rem; font-weight: 900; color: #ffb020; }
+        .master-display { display: flex; justify-content: space-between; align-items: center; background: var(--bg-input); padding: 1rem; border-radius: 12px; margin-bottom: 1rem; }
     </style>
 </head>
 <body>
 
     <div class="auth-container" id="adminAuthGate">
         <div class="auth-card">
-            <h2>Admin Command Center</h2>
-            <p>Input system credentials to control operations.</p>
+            <h2>Housie Admin Portal</h2>
             <div class="form-group">
-                <label>Master Password</label>
-                <input type="password" id="adminPassInput" placeholder="Password (Default: admin123)">
+                <label>Master Code Pin</label>
+                <input type="password" id="adminPassInput" placeholder="Enter Admin Pin (admin123)">
             </div>
-            <button class="btn btn-danger" onclick="executeAdminAuth()">Gain Access Control</button>
+            <button class="btn btn-danger" onclick="executeAdminAuth()">Launch Control Board</button>
             <div id="authErrMsg" style="color:var(--accent-danger); font-size:0.85rem; margin-top:0.8rem; display:none;"></div>
         </div>
     </div>
 
-    <div class="app-container" id="adminMainLayout" style="display:none; max-width: 1000px;">
+    <div class="app-container" id="adminMainLayout" style="display:none; max-width: 950px;">
         <header>
             <div>
-                <h1 style="font-size: 1.5rem; color: var(--accent-danger); font-weight: 800;">🎙️ TAMBOLA GAME MASTER PANEL</h1>
-                <p style="font-size: 0.8rem; color: var(--text-muted);">Click any number on the board below to broadcast live to all players</p>
+                <h1 style="font-size: 1.5rem; color: var(--accent-danger); font-weight: 800;">🛠️ HOUSIE GAME CONTROL INTERFACE</h1>
+                <p style="font-size: 0.8rem; color: var(--text-muted);">Tap any number box grid space to publish that value instantly live</p>
             </div>
-            <button class="btn btn-danger" style="width: auto; padding: 6px 15px;" onclick="triggerReset()">🔄 Reset Game</button>
+            <button class="btn btn-danger" style="width: auto; padding: 6px 15px;" onclick="triggerReset()">🔄 Wipe Board Reset</button>
         </header>
 
-        <div class="grid-layout" style="grid-template-columns: 1.5fr 1fr;">
+        <div class="grid-layout" style="grid-template-columns: 1.6fr 1fr;">
             <div>
-                <div class="display-panel">
+                <div class="master-display">
                     <div>
-                        <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Current Number</span>
-                        <div class="big-ball" id="currentBallDisplay">-</div>
+                        <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Active Drawn Ball</span>
+                        <div id="currentBallDisplay" style="font-size: 3.5rem; font-weight: 900; color: #ffb020;">-</div>
                     </div>
-                    <button class="btn btn-primary" style="width: auto;" onclick="startRegistrationTimer()">⏳ Start 60s Timer</button>
+                    <div class="badge" style="border-color: var(--accent-success); font-size:1rem; padding:10px;">🟢 Live Connected</div>
                 </div>
 
                 <div class="card">
-                    <h3>🔢 1-90 Main Board (Click to Draw)</h3>
+                    <h3>🔢 Master 1-90 Draw Selection Sheet</h3>
                     <div class="board-grid" id="mainAdminBoard"></div>
                 </div>
             </div>
 
-            <div style="display: flex; flex-direction: column; gap: 1rem;">
-                <div class="card">
-                    <h3>💸 Deposit Approvals (<span id="metricPendingCount">0</span>)</h3>
-                    <div class="table-responsive" style="max-height: 180px; overflow-y: auto;">
-                        <table>
-                            <tbody id="depositRequestsTableBody"></tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="card chat-container" style="height: 250px;">
-                    <div class="chat-logs" id="adminChatLogsArea" style="height: 180px;"></div>
-                    <div class="chat-input-wrapper">
-                        <input type="text" id="adminChatMessageField" placeholder="Announcement...">
-                        <button class="btn btn-danger" onclick="submitAdminChatMessage()">Send</button>
-                    </div>
+            <div class="card chat-container" style="height: 100%;">
+                <h3>💬 Live Lounge Chat Audit System</h3>
+                <div class="chat-logs" id="adminChatLogsArea" style="flex-grow:1; height:350px;"></div>
+                <div class="chat-input-wrapper">
+                    <input type="text" id="adminChatMessageField" placeholder="Broadcast notification message...">
+                    <button class="btn btn-danger" onclick="submitAdminChatMessage()">Send</button>
                 </div>
             </div>
         </div>
@@ -107,30 +95,20 @@
                 cell.className = 'board-cell';
                 cell.id = `admin-num-${i}`;
                 cell.textContent = i;
-                cell.onclick = () => sendNumber(i);
+                cell.onclick = () => socket.emit('newNumber', i);
                 grid.appendChild(cell);
             }
         }
 
-        function sendNumber(num) {
-            socket.emit('newNumber', num);
-        }
-
-        function startRegistrationTimer() {
-            socket.emit('startTimerEvent');
-        }
-
         function triggerReset() {
-            if(confirm("Pura game reset karein? Saare numbers clear ho jayenge.")) {
+            if(confirm("Wipe entire board status? All player cards will clean strikes.")) {
                 socket.emit('resetGame');
             }
         }
 
         socket.on('adminDashboardUpdate', (data) => {
-            document.getElementById('metricPendingCount').textContent = data.pendingRequests.length;
             document.getElementById('currentBallDisplay').textContent = data.latestBall;
             
-            // Sync Board Grid Status
             for(let i = 1; i <= 90; i++) {
                 const cell = document.getElementById(`admin-num-${i}`);
                 if(cell) {
@@ -138,25 +116,7 @@
                     else cell.classList.remove('called');
                 }
             }
-            renderRequestsTable(data.allRequests);
         });
-
-        function renderRequestsTable(requests) {
-            const tbody = document.getElementById('depositRequestsTableBody');
-            tbody.innerHTML = requests.length === 0 ? '<tr><td>No pending requests</td></tr>' : '';
-            requests.reverse().forEach(req => {
-                if(req.status !== 'pending') return;
-                tbody.innerHTML += `
-                    <tr>
-                        <td><strong>${req.username}</strong> (₹${req.amount})< br><small>UTR: ${req.utr}</small></td>
-                        <td style="text-align:right;">
-                            <button class="btn btn-success" style="padding:4px 8px; width:auto; font-size:0.8rem;" onclick="socket.emit('processRequest', {requestId:'${req.id}', action:'approved'})">✔</button>
-                            <button class="btn btn-danger" style="padding:4px 8px; width:auto; font-size:0.8rem;" onclick="socket.emit('processRequest', {requestId:'${req.id}', action:'rejected'})">❌</button>
-                        </td>
-                    </tr>
-                `;
-            });
-        }
 
         function submitAdminChatMessage() {
             const field = document.getElementById('adminChatMessageField');
@@ -167,9 +127,7 @@
 
         socket.on('chatHistory', (history) => {
             const area = document.getElementById('adminChatLogsArea'); area.innerHTML = '';
-            history.forEach(msg => {
-                area.innerHTML += `<div class="chat-msg"><span class="author">${msg.sender}:</span> ${msg.text}</div>`;
-            });
+            history.forEach(msg => area.innerHTML += `<div class="chat-msg"><span class="author">${msg.sender}:</span> ${msg.text}</div>`);
             area.scrollTop = area.scrollHeight;
         });
 
