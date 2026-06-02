@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tambola Master Console</title>
+    <title>Control Console</title>
     <link rel="stylesheet" href="style.css">
     <script src="/socket.io/socket.io.js"></script>
     <style>
@@ -13,39 +13,36 @@
             aspect-ratio: 1; display: flex; align-items: center; justify-content: center; 
             font-size: 1.2rem; font-weight: 800; border-radius: 8px; cursor: pointer; transition: all 0.2s;
         }
-        .board-cell.called { background: var(--accent-success); color: #000; box-shadow: 0 0 12px var(--accent-success); }
+        .board-cell.called { background: #ef4444 !important; color: #fff !important; box-shadow: 0 0 12px #ef4444; }
         .master-display { display: flex; justify-content: space-between; align-items: center; background: var(--bg-input); padding: 1rem; border-radius: 12px; margin-bottom: 1rem; }
         .mode-btn { padding: 10px 20px; font-weight: bold; font-size: 1rem; cursor: pointer; border: 2px solid transparent; border-radius: 8px; }
-        .mode-active { background-color: var(--accent-success) !important; color: black !important; border-color: #fff; }
+        .mode-active { background-color: #ef4444 !important; color: white !important; }
     </style>
 </head>
 <body>
 
     <div class="auth-container" id="adminAuthGate">
         <div class="auth-card">
-            <h2>Housie Admin Portal</h2>
+            <h2>Housie Control Desk</h2>
             <div class="form-group">
-                <input type="password" id="adminPassInput" placeholder="Enter Admin Pin (admin123)">
+                <input type="password" id="adminPassInput" placeholder="Master Pin Code (admin123)">
             </div>
             <button class="btn btn-danger" onclick="executeAdminAuth()">Launch Control Board</button>
-            <div id="authErrMsg" style="color:var(--accent-danger); display:none;"></div>
         </div>
     </div>
 
     <div class="app-container" id="adminMainLayout" style="display:none; max-width: 950px;">
         <header>
-            <div>
-                <h1 style="font-size: 1.5rem; color: var(--accent-danger); font-weight: 800;">🎙️ CONTROL DESK</h1>
-            </div>
+            <h1 style="font-size: 1.4rem; color: #ef4444; font-weight: 800;">🎙️ HOUSIE GAME COMMAND CENTRE</h1>
             <div style="display:flex; gap:10px;">
                 <button class="btn btn-primary" onclick="socket.emit('startRegistrationWindow')">⏳ Start 1 Min Entry</button>
-                <button class="btn btn-danger" onclick="triggerReset()">🔄 Wipe Game & Chat</button>
+                <button class="btn btn-danger" onclick="triggerReset()">🔄 Wipe Game Board</button>
             </div>
         </header>
 
         <div class="card" style="display:flex; justify-content: space-around; padding: 1rem; margin-bottom: 1rem;">
-            <button id="manualModeBtn" class="mode-btn mode-active" onclick="changeEngineMode('manual')">🎮 MANUAL MODE (Click Draw)</button>
-            <button id="autoModeBtn" class="mode-btn" onclick="changeEngineMode('auto')">🤖 AUTO PLAY (7s Engine Loop)</button>
+            <button id="manualModeBtn" class="mode-btn mode-active" onclick="changeEngineMode('manual')">🎮 MANUAL MODE (Click)</button>
+            <button id="autoModeBtn" class="mode-btn" onclick="changeEngineMode('auto')">🤖 AUTO PLAY (7s Timer Loop)</button>
         </div>
 
         <div class="grid-layout" style="grid-template-columns: 1.6fr 1fr;">
@@ -57,21 +54,21 @@
                     </div>
                     <div>
                         <span>Engine Status</span>
-                        <div id="engineStatusLabel" style="font-size: 1.2rem; font-weight: 800; color: var(--accent-success);">WAITING</div>
+                        <div id="engineStatusLabel" style="font-size: 1.2rem; font-weight: 800; color: #ef4444;">WAITING</div>
                     </div>
                 </div>
 
                 <div class="card">
-                    <h3 id="gridTitle">🔢 Click to Draw Number</h3>
+                    <h3 id="gridTitle">🔢 Master Draw Map</h3>
                     <div class="board-grid" id="mainAdminBoard"></div>
                 </div>
             </div>
 
             <div class="card chat-container">
-                <h3>💬 Chat Audit Workspace</h3>
+                <h3>💬 Chat Logs Workspace</h3>
                 <div class="chat-logs" id="adminChatLogsArea" style="height:350px;"></div>
                 <div class="chat-input-wrapper">
-                    <input type="text" id="adminChatMessageField" placeholder="Broadcast text...">
+                    <input type="text" id="adminChatMessageField" placeholder="Broadcast system message...">
                     <button class="btn btn-danger" onclick="submitAdminChatMessage()">Send</button>
                 </div>
             </div>
@@ -111,16 +108,16 @@
 
         function handleCellClick(num) {
             if(activeMode === "auto") {
-                alert("Auto-Play ON hai! Manual click karne ke liye pehle Manual Mode toggle karein.");
+                alert("Auto-Play running! Turn mode back to manual first.");
                 return;
             }
-            if(confirm(`Send number ${num}?`)) {
+            if(confirm(`Publish ball draw target number ${num}?`)) {
                 socket.emit('newNumber', num);
             }
         }
 
         function triggerReset() {
-            if(confirm("Reset pure game records and wipe entire logs chat database?")) {
+            if(confirm("Wipe structural database data records + clean conversation rooms?")) {
                 socket.emit('resetGame');
             }
         }
@@ -131,13 +128,13 @@
             activeMode = data.playMode;
 
             if(activeMode === "auto") {
-                document.getElementById('autoModeBtn').classList.add('mode-active');
-                document.getElementById('manualModeBtn').classList.remove('mode-active');
-                document.getElementById('gridTitle').textContent = "🤖 AUTO ENGINE DRAWING RUNNING...";
+                document.getElementById('autoModeBtn').className = 'mode-btn mode-active';
+                document.getElementById('manualModeBtn').className = 'mode-btn';
+                document.getElementById('gridTitle').textContent = "🤖 AUTO INTERACTIVE CYCLE FIRING...";
             } else {
-                document.getElementById('manualModeBtn').classList.add('mode-active');
-                document.getElementById('autoModeBtn').classList.remove('mode-active');
-                document.getElementById('gridTitle').textContent = "🔢 Click to Draw Number Manually";
+                document.getElementById('manualModeBtn').className = 'mode-btn mode-active';
+                document.getElementById('autoModeBtn').className = 'mode-btn';
+                document.getElementById('gridTitle').textContent = "🔢 Click grid tile manually";
             }
             
             for(let i = 1; i <= 90; i++) {
