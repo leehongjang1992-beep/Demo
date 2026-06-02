@@ -13,17 +13,15 @@ const ADMIN_PASSWORD = "admin123";
 
 let onlineUsers = {}; 
 let chatHistory = []; 
-let gameState = { latestBall: "-", calledNumbers: [] };
+let gameState = { 
+    latestBall: "-", 
+    calledNumbers: [],
+    timerActive: false,
+    timeLeft: 0,
+    gameStatus: "WAITING" // WAITING, REGISTRATION, STARTED
+};
 
-// ⏳ Continuous 60s Global Countdown Infinite Loop Automation
-let globalTimeLeft = 60;
-setInterval(() => {
-    io.emit('syncTimer', globalTimeLeft);
-    globalTimeLeft--;
-    if (globalTimeLeft < 0) {
-        globalTimeLeft = 60; // 1 min loop automates again cleanly
-    }
-}, 1000);
+let timerInterval = null;
 
 app.use(express.static(__dirname));
 
@@ -33,7 +31,9 @@ app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'admin.html'))
 function updateAdminDashboard() {
     io.to('admin-room').emit('adminDashboardUpdate', {
         latestBall: gameState.latestBall,
-        calledNumbers: gameState.calledNumbers
+        calledNumbers: gameState.calledNumbers,
+        gameStatus: gameState.gameStatus,
+        timeLeft: gameState.timeLeft
     });
 }
 
@@ -54,38 +54,70 @@ io.on('connection', (socket) => {
             updateAdminDashboard();
             socket.emit('chatHistory', chatHistory);
         } else {
-            socket.emit('adminAuthFailure', 'Invalid Admin Pin Password Code!');
+            socket.emit('adminAuthFailure', 'Invalid Admin Pin Code!');
         }
     });
 
-    // ⚡ Real-Time Admin Click Sync Event Pipe Handler
+    // ⏳ Admin manually triggers 1-minute registration window
+    socket.on('startRegistrationWindow', () => {
+        if (timerInterval) clearInterval(timerInterval);
+        
+        gameState.gameStatus = "REGISTRATION";
+        gameState.timerActive = true;
+        gameState.timeLeft = 60;
+        gameState.calledNumbers = [];
+        gameState.latestBall = "-";
+
+        io.emit('gameUpdate', gameState);
+        updateAdminDashboard();
+
+        timerInterval = setInterval(() => {
+            gameState.timeLeft--;
+            io.emit('syncTimer', gameState.timeLeft);
+            
+            if (gameState.timeLeft <= 0) {
+                clearInterval(timerInterval);
+                gameState.timerActive = false;
+                gameState.gameStatus = "STARTED";
+                io.emit('gameUpdate', gameState);
+                updateAdminDashboard();
+            }
+        }, 1000);
+    });
+
+    // ⚡ Real-Time Admin Click Confirm Handler
     socket.on('newNumber', (num) => {
         const parsedNum = parseInt(num);
         if (!gameState.calledNumbers.includes(parsedNum)) {
-            gameState.calledNumbers.push(parsedNum);
+            // Naya number array me SABSE PEHLE (index 0 par) unshift hoga taaki yeh hamesha upar/pehle dikhe
+            gameState.calledNumbers.unshift(parsedNum);
         }
         gameState.latestBall = parsedNum;
+        gameState.gameStatus = "STARTED"; // Game automatically starts playing
         
         io.emit('gameUpdate', gameState);
         updateAdminDashboard();
     });
 
     socket.on('resetGame', () => {
-        gameState = { latestBall: "-", calledNumbers: [] };
+        if (timerInterval) clearInterval(timerInterval);
+        gameState = { latestBall: "-", calledNumbers: [], timerActive: false, timeLeft: 0, gameStatus: "WAITING" };
         io.emit('gameUpdate', gameState);
         updateAdminDashboard();
     });
 
+    // Chat Pipeline Fix: Storing mapping inside onlineUsers correctly
     socket.on('sendMessage', (msgText) => {
         const user = onlineUsers[socket.id];
         if (!user) return;
+        
         const msgData = {
             sender: user.username,
             text: msgText,
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
         chatHistory.push(msgData);
-        if (chatHistory.length > 30) chatHistory.shift();
+        if (chatHistory.length > 40) chatHistory.shift();
         io.emit('receiveMessage', msgData);
     });
 
