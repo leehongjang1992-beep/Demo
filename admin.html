@@ -7,16 +7,16 @@
     <link rel="stylesheet" href="style.css">
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        .board-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 8px; margin: 1.5rem 0; }
+        .board-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px; margin: 1.5rem 0; }
         .board-cell { 
             background: var(--bg-input); border: 1px solid var(--border-color); 
             aspect-ratio: 1; display: flex; align-items: center; justify-content: center; 
-            font-size: 1.2rem; font-weight: 800; border-radius: 8px; cursor: pointer; transition: all 0.2s;
+            font-size: 1.1rem; font-weight: 800; border-radius: 8px; cursor: pointer; transition: all 0.2s;
         }
-        .board-cell.called { background: #ef4444 !important; color: #fff !important; box-shadow: 0 0 12px #ef4444; }
+        .board-cell.called { background: #ef4444 !important; color: #fff !important; box-shadow: 0 0 10px #ef4444; }
         .master-display { display: flex; justify-content: space-between; align-items: center; background: var(--bg-input); padding: 1rem; border-radius: 12px; margin-bottom: 1rem; }
-        .mode-btn { padding: 10px 20px; font-weight: bold; font-size: 1rem; cursor: pointer; border: 2px solid transparent; border-radius: 8px; }
-        .mode-active { background-color: #ef4444 !important; color: white !important; }
+        .mode-btn { padding: 10px 20px; font-weight: bold; font-size: 1rem; cursor: pointer; border-radius: 8px; border:none; }
+        .mode-active { background-color: #e11d48 !important; color: white !important; }
     </style>
 </head>
 <body>
@@ -33,42 +33,43 @@
 
     <div class="app-container" id="adminMainLayout" style="display:none; max-width: 950px;">
         <header>
-            <h1 style="font-size: 1.4rem; color: #ef4444; font-weight: 800;">🎙️ HOUSIE GAME COMMAND CENTRE</h1>
+            <h1 style="font-size: 1.4rem; color: #ef4444; font-weight: 800;">🎙️ HOUSIE COMMAND UNIT</h1>
             <div style="display:flex; gap:10px;">
-                <button class="btn btn-primary" onclick="socket.emit('startRegistrationWindow')">⏳ Start 1 Min Entry</button>
-                <button class="btn btn-danger" onclick="triggerReset()">🔄 Wipe Game Board</button>
+                <!-- Pressing this triggers automatic 30s user-side synchronization layout countdown clock -->
+                <button class="btn btn-primary" style="background:#2563eb;" onclick="socket.emit('startRegistrationWindow')">⚡ Start Game (30s Timer)</button>
+                <button class="btn btn-danger" onclick="triggerReset()">🔄 Wipe Game Records</button>
             </div>
         </header>
 
-        <div class="card" style="display:flex; justify-content: space-around; padding: 1rem; margin-bottom: 1rem;">
-            <button id="manualModeBtn" class="mode-btn mode-active" onclick="changeEngineMode('manual')">🎮 MANUAL MODE (Click)</button>
-            <button id="autoModeBtn" class="mode-btn" onclick="changeEngineMode('auto')">🤖 AUTO PLAY (7s Timer Loop)</button>
+        <div class="card" style="display:flex; justify-content: space-around; padding: 1rem; margin-bottom: 1rem; background:#1e293b;">
+            <button id="manualModeBtn" class="mode-btn mode-active" onclick="changeEngineMode('manual')">🎮 MANUAL SELECTION</button>
+            <button id="autoModeBtn" class="mode-btn" onclick="changeEngineMode('auto')">🤖 AUTO ENGINE DRAW (7s Loop)</button>
         </div>
 
         <div class="grid-layout" style="grid-template-columns: 1.6fr 1fr;">
             <div>
-                <div class="master-display">
+                <div class="master-display" style="border: 1px solid #475569;">
                     <div>
-                        <span>Current Ball Status</span>
-                        <div id="currentBallDisplay" style="font-size: 3.5rem; font-weight: 900; color: #ffb020;">-</div>
+                        <span>Spotlight Selected Ball</span>
+                        <div id="currentBallDisplay" style="font-size: 3.5rem; font-weight: 900; color: #eab308;">-</div>
                     </div>
                     <div>
-                        <span>Engine Status</span>
-                        <div id="engineStatusLabel" style="font-size: 1.2rem; font-weight: 800; color: #ef4444;">WAITING</div>
+                        <span>System Engine Mode State</span>
+                        <div id="engineStatusLabel" style="font-size: 1.2rem; font-weight: 800; color: #f43f5e;">WAITING</div>
                     </div>
                 </div>
 
                 <div class="card">
-                    <h3 id="gridTitle">🔢 Master Draw Map</h3>
+                    <h3 id="gridTitle">🔢 Master Call Map Matrix</h3>
                     <div class="board-grid" id="mainAdminBoard"></div>
                 </div>
             </div>
 
             <div class="card chat-container">
-                <h3>💬 Chat Logs Workspace</h3>
+                <h3>💬 Admin Chat Feed</h3>
                 <div class="chat-logs" id="adminChatLogsArea" style="height:350px;"></div>
                 <div class="chat-input-wrapper">
-                    <input type="text" id="adminChatMessageField" placeholder="Broadcast system message...">
+                    <input type="text" id="adminChatMessageField" placeholder="Send system notice...">
                     <button class="btn btn-danger" onclick="submitAdminChatMessage()">Send</button>
                 </div>
             </div>
@@ -108,16 +109,14 @@
 
         function handleCellClick(num) {
             if(activeMode === "auto") {
-                alert("Auto-Play running! Turn mode back to manual first.");
+                alert("Auto-Play loop execution firing! Return system configuration to manual first.");
                 return;
             }
-            if(confirm(`Publish ball draw target number ${num}?`)) {
-                socket.emit('newNumber', num);
-            }
+            socket.emit('newNumber', num);
         }
 
         function triggerReset() {
-            if(confirm("Wipe structural database data records + clean conversation rooms?")) {
+            if(confirm("Flush structural database parameters clean?")) {
                 socket.emit('resetGame');
             }
         }
@@ -130,11 +129,11 @@
             if(activeMode === "auto") {
                 document.getElementById('autoModeBtn').className = 'mode-btn mode-active';
                 document.getElementById('manualModeBtn').className = 'mode-btn';
-                document.getElementById('gridTitle').textContent = "🤖 AUTO INTERACTIVE CYCLE FIRING...";
+                document.getElementById('gridTitle').textContent = "🤖 AUTO DRAW CYCLE TIMELINE ONLINE...";
             } else {
                 document.getElementById('manualModeBtn').className = 'mode-btn mode-active';
                 document.getElementById('autoModeBtn').className = 'mode-btn';
-                document.getElementById('gridTitle').textContent = "🔢 Click grid tile manually";
+                document.getElementById('gridTitle').textContent = "🔢 Click tile manually below to publish";
             }
             
             for(let i = 1; i <= 90; i++) {
